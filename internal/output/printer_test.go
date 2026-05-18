@@ -50,12 +50,12 @@ func TestPrinter_Table_Project(t *testing.T) {
 func TestPrinter_Table_Deployment(t *testing.T) {
 	var buf bytes.Buffer
 	p, _ := NewPrinter("table", &buf)
-	items := []api.Deployment{{Name: "web", Revision: 3, Status: "running", Image: "img:1"}}
+	items := []api.Deployment{{Name: "web", Type: "WebService", ActionStatus: "success", Location: "olufy-0", MinReplicas: 2, MaxReplicas: 5}}
 	if err := p.PrintList(items); err != nil {
 		t.Fatalf("PrintList: %v", err)
 	}
 	out := buf.String()
-	for _, want := range []string{"NAME", "REVISION", "STATUS", "IMAGE", "web", "running", "img:1"} {
+	for _, want := range []string{"NAME", "TYPE", "STATUS", "LOCATION", "web", "WebService", "success", "olufy-0", "2-5"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in: %s", want, out)
 		}

@@ -47,9 +47,20 @@ func (p *tablePrinter) Print(v any) error {
 		return p.PrintList([]api.Project{t})
 	case api.Deployment:
 		return p.PrintList([]api.Deployment{t})
+	case api.DeploymentDetail:
+		return p.printRows(deploymentDetailHeaders(), deploymentDetailRows(t))
 	default:
 		return fmt.Errorf("table printer: unsupported type %T", v)
 	}
+}
+
+func (p *tablePrinter) printRows(headers []string, rows [][]string) error {
+	tw := tabwriter.NewWriter(p.w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, joinTab(headers))
+	for _, r := range rows {
+		fmt.Fprintln(tw, joinTab(r))
+	}
+	return tw.Flush()
 }
 
 func (p *tablePrinter) PrintList(items any) error {
@@ -90,6 +101,12 @@ func tableRows(items any) ([]string, [][]string, error) {
 			rows = append(rows, deploymentRow(it))
 		}
 		return deploymentHeaders(), rows, nil
+	case []api.RevisionItem:
+		rows := make([][]string, 0, len(v))
+		for _, it := range v {
+			rows = append(rows, revisionRow(it))
+		}
+		return revisionHeaders(), rows, nil
 	default:
 		return nil, nil, fmt.Errorf("table printer: unsupported type %T", items)
 	}

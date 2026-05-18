@@ -75,15 +75,15 @@ func TestDeploymentList_Happy(t *testing.T) {
 	_ = setupAuthed(t)
 	srv := newFakeBackend(t, map[string]func([]byte) string{
 		"project.list": func([]byte) string {
-			return `{"ok":true,"result":{"items":[{"id":"proj-1","name":"alpha"}]}}`
+			return `{"ok":true,"result":{"items":[{"id":"proj-1","no":"alpha-slug","name":"alpha"}]}}`
 		},
 		"deployment.list": func(body []byte) string {
-			var p struct{ ProjectID string `json:"project_id"` }
+			var p struct{ Project string `json:"project"` }
 			_ = json.Unmarshal(body, &p)
-			if p.ProjectID != "proj-1" {
-				return `{"ok":false,"error":{"code":"BAD","message":"expected proj-1"}}`
+			if p.Project != "alpha-slug" {
+				return `{"ok":false,"error":{"code":"BAD","message":"expected alpha-slug"}}`
 			}
-			return `{"ok":true,"result":{"items":[{"name":"web","status":"running","revision":1,"image":"img:1"}]}}`
+			return `{"ok":true,"result":{"items":[{"name":"web","type":"WebService","actionStatus":"running"}]}}`
 		},
 	})
 
@@ -101,12 +101,20 @@ func TestDeploymentList_Happy(t *testing.T) {
 
 func TestDeploymentGet_JSON(t *testing.T) {
 	_ = setupAuthed(t)
+	t.Setenv("NTZH_LOCATION", "bkk-1")
 	srv := newFakeBackend(t, map[string]func([]byte) string{
 		"project.list": func([]byte) string {
 			return `{"ok":true,"result":{"items":[{"id":"p","name":"alpha"}]}}`
 		},
-		"deployment.get": func([]byte) string {
-			return `{"ok":true,"result":{"name":"web","revision":7,"status":"running"}}`
+		"deployment.get": func(body []byte) string {
+			var p struct {
+				Project, Location, Name string
+			}
+			_ = json.Unmarshal(body, &p)
+			if p.Location != "bkk-1" || p.Name != "web" {
+				return `{"ok":false,"error":{"code":"X","message":"bad body"}}`
+			}
+			return `{"ok":true,"result":{"name":"web","revision":7,"minReplica":1,"maxReplica":3}}`
 		},
 	})
 
@@ -129,21 +137,20 @@ func TestDeploymentGet_JSON(t *testing.T) {
 
 func TestDeploymentDeploy(t *testing.T) {
 	_ = setupAuthed(t)
+	t.Setenv("NTZH_LOCATION", "bkk-1")
 	srv := newFakeBackend(t, map[string]func([]byte) string{
 		"project.list": func([]byte) string {
-			return `{"ok":true,"result":{"items":[{"id":"p","name":"alpha"}]}}`
+			return `{"ok":true,"result":{"items":[{"id":"p","no":"p-slug","name":"alpha"}]}}`
 		},
 		"deployment.deploy": func(body []byte) string {
 			var p struct {
-				ProjectID string `json:"project_id"`
-				Name      string `json:"name"`
-				Image     string `json:"image"`
+				Project, Location, Name, Image string
 			}
 			_ = json.Unmarshal(body, &p)
-			if p.ProjectID != "p" || p.Name != "web" || p.Image != "img:2" {
+			if p.Project != "p-slug" || p.Location != "bkk-1" || p.Name != "web" || p.Image != "img:2" {
 				return `{"ok":false,"error":{"code":"X","message":"bad body"}}`
 			}
-			return `{"ok":true,"result":{"name":"web","revision":2,"image":"img:2","status":"deploying"}}`
+			return `{"ok":true,"result":null}`
 		},
 	})
 
@@ -155,18 +162,27 @@ func TestDeploymentDeploy(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
 	}
-	if !strings.Contains(out.String(), "deploying") {
+	if !strings.Contains(out.String(), "deploying img:2") {
 		t.Fatalf("got %q", out.String())
 	}
 }
 
 func TestDeploymentRollback(t *testing.T) {
 	_ = setupAuthed(t)
+	t.Setenv("NTZH_LOCATION", "bkk-1")
 	srv := newFakeBackend(t, map[string]func([]byte) string{
 		"project.list": func([]byte) string {
 			return `{"ok":true,"result":{"items":[{"id":"p","name":"alpha"}]}}`
 		},
 		"deployment.rollback": func(body []byte) string {
+			var p struct {
+				Location string
+				Revision int
+			}
+			_ = json.Unmarshal(body, &p)
+			if p.Location != "bkk-1" || p.Revision != 3 {
+				return `{"ok":false,"error":{"code":"X","message":"bad body"}}`
+			}
 			return `{"ok":true,"result":{}}`
 		},
 	})
@@ -184,29 +200,30 @@ func TestDeploymentRollback(t *testing.T) {
 	}
 }
 
-func TestDeploymentLogs(t *testing.T) {
+func TestDeploymentRevisions(t *testing.T) {
 	_ = setupAuthed(t)
+	t.Setenv("NTZH_LOCATION", "bkk-1")
 	srv := newFakeBackend(t, map[string]func([]byte) string{
 		"project.list": func([]byte) string {
 			return `{"ok":true,"result":{"items":[{"id":"p","name":"alpha"}]}}`
 		},
 		"deployment.logRevision": func([]byte) string {
 			return `{"ok":true,"result":{"items":[
-				{"timestamp":"2026-05-18T01:00:00Z","line":"first"},
-				{"timestamp":"2026-05-18T01:00:01Z","line":"second"}
+				{"revision":2,"image":"img:2","status":3,"deployedByEmail":"a@b","deployedAt":"2026-05-18T01:00:00Z"},
+				{"revision":1,"image":"img:1","status":3,"deployedByEmail":"a@b","deployedAt":"2026-05-18T00:00:00Z"}
 			]}}`
 		},
 	})
 
 	cmd := NewRootCmd()
-	cmd.SetArgs([]string{"deployment", "logs", "web",
-		"--server", srv.URL, "--project", "alpha", "--revision", "1"})
+	cmd.SetArgs([]string{"deployment", "revisions", "web",
+		"--server", srv.URL, "--project", "alpha"})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
 	}
-	if !strings.Contains(out.String(), "first") || !strings.Contains(out.String(), "second") {
+	if !strings.Contains(out.String(), "img:2") || !strings.Contains(out.String(), "img:1") {
 		t.Fatalf("got %q", out.String())
 	}
 }

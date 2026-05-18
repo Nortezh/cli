@@ -170,13 +170,13 @@ func TestError_String(t *testing.T) {
 
 // Sanity: types in types.go compile and marshal as expected.
 func TestTypes_MarshalRoundtrip(t *testing.T) {
-	in := Deployment{Name: "d1", Revision: 3, Status: "running"}
+	in := Deployment{Name: "d1", Type: "WebService", ActionStatus: "success"}
 	b, _ := json.Marshal(in)
 	var out Deployment
 	if err := json.Unmarshal(b, &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if out.Name != "d1" || out.Revision != 3 {
+	if out.Name != "d1" || out.Type != "WebService" {
 		t.Fatalf("roundtrip: %+v", out)
 	}
 }

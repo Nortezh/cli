@@ -40,7 +40,22 @@ func newLoginCmd(g *Globals) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Authenticate with the Nortezh platform",
+		Short: "Authenticate with the Nortezh platform (browser or service account)",
+		Long: `Authenticate and store credentials at ~/.config/ntzh/credentials.json (mode 0600).
+
+Two modes:
+  Interactive (default): opens the browser, completes the OAuth flow via
+    a loopback HTTP server, and stores a 7-day bearer token. There is no
+    refresh — re-run 'ntzh login' when the token expires.
+  Service account (for CI): pass --service-account and --key or
+    --key-file. Credentials are stored as HTTP Basic auth and do not
+    expire on a clock.`,
+		Example: `  # Interactive (developer machine)
+  ntzh login
+
+  # CI / non-interactive
+  ntzh login --service-account ci@acme.com --key-file ./key.txt
+  cat ./key.txt | ntzh login --service-account ci@acme.com --key-file -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if serviceAccount != "" || key != "" || keyFile != "" {
 				return runServiceAccountLogin(cmd, serviceAccount, key, keyFile)
@@ -48,9 +63,9 @@ func newLoginCmd(g *Globals) *cobra.Command {
 			return runBrowserLogin(cmd, g)
 		},
 	}
-	cmd.Flags().StringVar(&serviceAccount, "service-account", "", "service account email")
-	cmd.Flags().StringVar(&key, "key", "", "service account key (inline)")
-	cmd.Flags().StringVar(&keyFile, "key-file", "", "path to file containing the service account key (- for stdin)")
+	cmd.Flags().StringVar(&serviceAccount, "service-account", "", "service account email (enables non-interactive login)")
+	cmd.Flags().StringVar(&key, "key", "", "service account key value (inline; mutually exclusive with --key-file)")
+	cmd.Flags().StringVar(&keyFile, "key-file", "", "file containing the service account key, or '-' to read from stdin")
 	return cmd
 }
 
@@ -129,7 +144,7 @@ func readKeyFile(path string, stdin io.Reader) (string, error) {
 func newLogoutCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
-		Short: "Remove stored credentials",
+		Short: "Delete stored credentials from ~/.config/ntzh/credentials.json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := auth.Wipe(); err != nil {
 				return err
@@ -143,7 +158,8 @@ func newLogoutCmd() *cobra.Command {
 func newWhoamiCmd(g *Globals) *cobra.Command {
 	return &cobra.Command{
 		Use:   "whoami",
-		Short: "Print the currently authenticated user",
+		Short: "Print the email of the currently authenticated account",
+		Long:  `Calls auth.me on the backend and prints the authenticated email to stdout. Exits non-zero if not logged in.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := buildClient(g)
 			if err != nil {

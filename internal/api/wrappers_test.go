@@ -39,54 +39,54 @@ func TestListProjects(t *testing.T) {
 
 func TestListDeployments(t *testing.T) {
 	c, seen := captureClient(t, "deployment.list",
-		`{"ok":true,"result":{"items":[{"name":"web","revision":2,"status":"running"}]}}`)
+		`{"ok":true,"result":{"items":[{"name":"web","type":"WebService","actionStatus":"success"}]}}`)
 
 	ds, err := c.ListDeployments(context.Background(), "proj-123")
 	if err != nil {
 		t.Fatalf("ListDeployments: %v", err)
 	}
-	if len(ds) != 1 || ds[0].Name != "web" || ds[0].Revision != 2 {
+	if len(ds) != 1 || ds[0].Name != "web" || ds[0].Type != "WebService" {
 		t.Fatalf("got %+v", ds)
 	}
 	var sent map[string]any
 	_ = json.Unmarshal([]byte(*seen), &sent)
-	if sent["project_id"] != "proj-123" {
-		t.Fatalf("expected project_id in body, got %v", sent)
+	if sent["project"] != "proj-123" {
+		t.Fatalf("expected project in body, got %v", sent)
+	}
+	pg, _ := sent["paginate"].(map[string]any)
+	if pg["page"].(float64) != 1 || pg["perPage"].(float64) != 40 {
+		t.Fatalf("paginate: %v", sent)
 	}
 }
 
 func TestGetDeployment(t *testing.T) {
 	c, seen := captureClient(t, "deployment.get",
-		`{"ok":true,"result":{"name":"web","status":"running"}}`)
+		`{"ok":true,"result":{"name":"web","minReplica":1,"maxReplica":3,"resource":{"requests":{"memory":"128M"}}}}`)
 
-	d, err := c.GetDeployment(context.Background(), "proj", "web")
+	d, err := c.GetDeployment(context.Background(), "proj", "bkk-1", "web")
 	if err != nil {
 		t.Fatalf("GetDeployment: %v", err)
 	}
-	if d.Name != "web" {
+	if d.Name != "web" || d.MinReplica != 1 || d.MaxReplica != 3 || d.Memory() != "128M" {
 		t.Fatalf("got %+v", d)
 	}
 	var sent map[string]any
 	_ = json.Unmarshal([]byte(*seen), &sent)
-	if sent["project_id"] != "proj" || sent["name"] != "web" {
+	if sent["project"] != "proj" || sent["name"] != "web" || sent["location"] != "bkk-1" {
 		t.Fatalf("body: %v", sent)
 	}
 }
 
 func TestDeploy(t *testing.T) {
 	c, seen := captureClient(t, "deployment.deploy",
-		`{"ok":true,"result":{"name":"web","status":"deploying","revision":3,"image":"img:1"}}`)
+		`{"ok":true,"result":null}`)
 
-	d, err := c.Deploy(context.Background(), "proj", "web", "img:1")
-	if err != nil {
+	if err := c.Deploy(context.Background(), "proj", "bkk-1", "web", "img:1"); err != nil {
 		t.Fatalf("Deploy: %v", err)
-	}
-	if d.Revision != 3 || d.Image != "img:1" {
-		t.Fatalf("got %+v", d)
 	}
 	var sent map[string]any
 	_ = json.Unmarshal([]byte(*seen), &sent)
-	if sent["project_id"] != "proj" || sent["name"] != "web" || sent["image"] != "img:1" {
+	if sent["project"] != "proj" || sent["location"] != "bkk-1" || sent["name"] != "web" || sent["image"] != "img:1" {
 		t.Fatalf("body: %v", sent)
 	}
 }
@@ -95,12 +95,12 @@ func TestRollback(t *testing.T) {
 	c, seen := captureClient(t, "deployment.rollback",
 		`{"ok":true,"result":{}}`)
 
-	if err := c.Rollback(context.Background(), "proj", "web", 2); err != nil {
+	if err := c.Rollback(context.Background(), "proj", "bkk-1", "web", 2); err != nil {
 		t.Fatalf("Rollback: %v", err)
 	}
 	var sent map[string]any
 	_ = json.Unmarshal([]byte(*seen), &sent)
-	if sent["project_id"] != "proj" || sent["name"] != "web" {
+	if sent["project"] != "proj" || sent["location"] != "bkk-1" || sent["name"] != "web" {
 		t.Fatalf("body: %v", sent)
 	}
 	if sent["revision"].(float64) != 2 {
@@ -108,20 +108,20 @@ func TestRollback(t *testing.T) {
 	}
 }
 
-func TestLogRevision(t *testing.T) {
+func TestListRevisions(t *testing.T) {
 	c, seen := captureClient(t, "deployment.logRevision",
-		`{"ok":true,"result":{"items":[{"timestamp":"2026-05-18T00:00:00Z","line":"hello"}]}}`)
+		`{"ok":true,"result":{"items":[{"revision":2,"image":"img:2","status":3,"deployedByEmail":"a@b","deployedAt":"2026-05-18T00:00:00Z"}]}}`)
 
-	lines, err := c.LogRevision(context.Background(), "proj", "web", 2)
+	items, err := c.ListRevisions(context.Background(), "proj", "bkk-1", "web")
 	if err != nil {
-		t.Fatalf("LogRevision: %v", err)
+		t.Fatalf("ListRevisions: %v", err)
 	}
-	if len(lines) != 1 || lines[0].Line != "hello" {
-		t.Fatalf("got %+v", lines)
+	if len(items) != 1 || items[0].Revision != 2 || items[0].Image != "img:2" || items[0].Status != 3 {
+		t.Fatalf("got %+v", items)
 	}
 	var sent map[string]any
 	_ = json.Unmarshal([]byte(*seen), &sent)
-	if sent["project_id"] != "proj" || sent["name"] != "web" || sent["revision"].(float64) != 2 {
+	if sent["project"] != "proj" || sent["location"] != "bkk-1" || sent["name"] != "web" {
 		t.Fatalf("body: %v", sent)
 	}
 }
