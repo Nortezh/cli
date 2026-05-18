@@ -61,6 +61,7 @@ Configuration precedence (highest first): flag > env > config file > default.
 	cmd.AddCommand(newWhoamiCmd(g))
 	cmd.AddCommand(newProjectCmd(g))
 	cmd.AddCommand(newDeploymentCmd(g))
+	cmd.AddCommand(newSkillCmd())
 	return cmd
 }
 

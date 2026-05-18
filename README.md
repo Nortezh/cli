@@ -32,6 +32,18 @@ go install github.com/nortezh/cli/cmd/ntzh@latest
 This installs the `ntzh` binary to `$(go env GOPATH)/bin`. Make sure that
 directory is on your `PATH`.
 
+### Claude Code skill (optional)
+
+`ntzh` bundles a [Claude Code](https://claude.com/claude-code) skill that
+teaches Claude how to drive this CLI safely (flag shapes, project/location
+resolution, common recipes). Install it once and every project's Claude
+Code session will pick it up:
+
+```sh
+ntzh skill install            # writes ~/.claude/skills/ntzh/SKILL.md
+ntzh skill install --force    # overwrite an existing copy
+```
+
 ### From a clone
 
 ```sh
