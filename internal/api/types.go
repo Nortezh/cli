@@ -122,8 +122,8 @@ type Domain struct {
 	Domain    string    `json:"domain"`
 	Wildcard  bool      `json:"wildcard"`
 	CDN       bool      `json:"cdn"`
-	Status    int       `json:"status"`
-	Action    int       `json:"action"`
+	Status    string    `json:"status"`
+	Action    string    `json:"action"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -133,8 +133,8 @@ type DomainDetail struct {
 	Domain       string              `json:"domain"`
 	Wildcard     bool                `json:"wildcard"`
 	CDN          bool                `json:"cdn"`
-	Status       int                 `json:"status"`
-	Action       int                 `json:"action"`
+	Status       string              `json:"status"`
+	Action       string              `json:"action"`
 	CreatedAt    time.Time           `json:"createdAt"`
 	Verification DomainVerification  `json:"verification"`
 	DNSConfig    DomainDNSConfig     `json:"dnsConfig"`

@@ -171,7 +171,7 @@ func TestDeleteRoute(t *testing.T) {
 
 func TestListDomains(t *testing.T) {
 	c, seen := captureClient(t, "domain.list",
-		`{"ok":true,"result":{"items":[{"id":1,"location":"bkk-1","domain":"acme.com","wildcard":false,"cdn":false,"status":1,"action":1,"createdAt":"2026-05-18T00:00:00Z"}]}}`)
+		`{"ok":true,"result":{"items":[{"id":1,"location":"bkk-1","domain":"acme.com","wildcard":false,"cdn":false,"status":"active","action":"none","createdAt":"2026-05-18T00:00:00Z"}]}}`)
 
 	ds, err := c.ListDomains(context.Background(), "acme")
 	if err != nil {

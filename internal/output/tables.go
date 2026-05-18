@@ -144,7 +144,7 @@ func domainRow(d api.Domain) []string {
 		d.Location,
 		boolLabel(d.Wildcard),
 		boolLabel(d.CDN),
-		actionStatusLabel(d.Status),
+		d.Status,
 		d.CreatedAt.Format("2006-01-02 15:04"),
 	}
 }
@@ -155,7 +155,7 @@ func domainDetailRows(d api.DomainDetail) [][]string {
 		{"LOCATION", d.Location},
 		{"WILDCARD", boolLabel(d.Wildcard)},
 		{"CDN", boolLabel(d.CDN)},
-		{"STATUS", actionStatusLabel(d.Status)},
+		{"STATUS", d.Status},
 		{"CREATED_AT", d.CreatedAt.Format("2006-01-02 15:04")},
 	}
 	if len(d.DNSConfig.CName) > 0 {
