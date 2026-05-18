@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-18
 **Status:** Approved (sections 1–4)
-**Scope:** First usable release of `nortezh`, a Go CLI for the `nortezh-backend` PaaS API.
+**Scope:** First usable release of `ntzh`, a Go CLI for the `nortezh-backend` PaaS API. (Repository: `nortezh-cli`. Binary: `ntzh`.)
 
 ## 1. Purpose
 
@@ -15,18 +15,18 @@
 - Windows-specific path handling beyond `os.UserConfigDir()`.
 - Server-side token revocation on `logout`.
 - Service-account-key auth (alternative path; deferred).
-- Backend integration tests (the OAuth endpoints don't exist yet).
+- Backend integration tests (covered later, behind a build tag).
 
 ## 3. Layout
 
 ```
 nortezh-cli/
-├── cmd/nortezh/main.go              # cobra root, wires subcommands
+├── cmd/ntzh/main.go                 # cobra root, wires subcommands (binary: ntzh)
 ├── internal/
 │   ├── cli/
 │   │   ├── root.go                  # global flags: --server, --project, --output, --debug
 │   │   ├── login.go                 # login, logout, whoami
-│   │   ├── project.go               # project list, project use <name>
+│   │   ├── project.go               # project list
 │   │   └── deployment.go            # deployment list/get/deploy/rollback/logs
 │   ├── api/
 │   │   ├── client.go                # Invoke(ctx, method, body, out) error
@@ -35,10 +35,10 @@ nortezh-cli/
 │   │   ├── project.go               # typed wrappers
 │   │   └── types.go                 # Project, Deployment, LogLine
 │   ├── auth/
-│   │   ├── pkce.go                  # PKCE pair (S256)
-│   │   ├── loopback.go              # local http server, browser launch
-│   │   └── token.go                 # TokenSource: load/save/refresh, refresh-on-401
-│   ├── config/config.go             # ~/.config/nortezh/{config,credentials}.json
+│   │   ├── loopback.go              # local http server, browser launch, state check
+│   │   ├── creds.go                 # Creds interface; Bearer + ServiceAccount impls
+│   │   └── store.go                 # load/save credentials.json
+│   ├── config/config.go             # ~/.config/ntzh/{config,credentials}.json
 │   └── output/
 │       ├── printer.go               # Printer interface, table|json
 │       └── tables.go                # Headers()/Row() per type
@@ -51,63 +51,54 @@ nortezh-cli/
 
 | Command | Backend call(s) | Notes |
 |---|---|---|
-| `nortezh login` | `/oauth/authorize` + `/oauth/token` (PKCE) | Loopback redirect. |
-| `nortezh logout` | — | Wipes `credentials.json`. |
-| `nortezh whoami` | `auth.me` | Prints user identity. |
-| `nortezh project list` | `project.list` | Table or JSON. |
-| `nortezh project use <name>` | `project.list` (resolve to ID) | Stores resolved `{id, name}` as `default_project` in config. |
-| `nortezh deployment list [--project X]` | `deployment.list` | |
-| `nortezh deployment get <name>` | `deployment.get` | |
-| `nortezh deployment deploy <name> --image <ref>` | `deployment.deploy` | |
-| `nortezh deployment rollback <name> --to <revision>` | `deployment.rollback` | |
-| `nortezh deployment logs <name> [--revision N]` | `deployment.logRevision` | Streams to stdout. |
+| `ntzh login` | `GET /user/auth/?state&callback` (existing Google relay) | Loopback callback; 7-day token. |
+| `ntzh logout` | — | Wipes `credentials.json`. |
+| `ntzh whoami` | `auth.me` | Prints user identity. |
+| `ntzh project list` | `project.list` | Table or JSON. |
+| `ntzh deployment list --project <name>` | `deployment.list` | `--project` required. |
+| `ntzh deployment get <name> --project <p>` | `deployment.get` | `--project` required. |
+| `ntzh deployment deploy <name> --project <p> --image <ref>` | `deployment.deploy` | `--project` required. |
+| `ntzh deployment rollback <name> --project <p> --to <revision>` | `deployment.rollback` | `--project` required. |
+| `ntzh deployment logs <name> --project <p> [--revision N]` | `deployment.logRevision` | `--project` required. Streams to stdout. |
 
 **Global flags:** `--server`, `--project`, `--output table|json` (default `table`), `--debug`.
 
+**No stored project state.** Every command that operates on a project requires `--project <name>` (or env `NTZH_PROJECT`). There is no `project use`, no `default_project` in config. Project name is resolved to ID on each invocation via `project.list`. Rationale: explicit > implicit; avoids "wrong-project" foot-guns when scripting or switching contexts.
+
 ## 5. Auth flow
 
-OAuth2 authorization-code grant with **PKCE (S256)** and **loopback redirect**.
+**No backend changes required.** The existing `nortezh-backend` already exposes (a) a Google-OAuth callback-relay endpoint (`/user/auth/`) that mints a random bearer token after Google sign-in, and (b) an arpc auth middleware that accepts `Authorization: Bearer <token>` on every protected route (`api/handler.go:246`). The CLI just acts as a callback target.
 
-1. CLI generates `code_verifier` (random 64 bytes, base64url, no padding) and `code_challenge = base64url(SHA256(verifier))`.
+### 5.1 `ntzh login` (interactive, default)
+
+1. CLI generates a random `state` (32 bytes, base64url).
 2. CLI starts an HTTP server on `127.0.0.1:<random port>` with a single `/callback` endpoint.
-3. Opens browser to:
+3. Opens the user's browser to:
    ```
-   {server}/user/auth/oauth/authorize
-     ?client_id=nortezh-cli
-     &response_type=code
-     &redirect_uri=http://127.0.0.1:<port>/callback
-     &code_challenge=<challenge>
-     &code_challenge_method=S256
-     &state=<random32>
-     &scope=cli
+   {server}/user/auth/?state=<state>&callback=http://127.0.0.1:<port>/callback
    ```
-4. Backend redirects to `http://127.0.0.1:<port>/callback?code=...&state=...`.
-5. CLI verifies `state`, POSTs to `{server}/user/auth/oauth/token`:
+4. The user completes Google sign-in. The backend mints a 32-byte random token, stores `sha256(token)` in `user_auth_tokens` with a 7-day expiry, then redirects to:
    ```
-   grant_type=authorization_code
-   code=<code>
-   code_verifier=<verifier>
-   redirect_uri=http://127.0.0.1:<port>/callback
-   client_id=nortezh-cli
+   http://127.0.0.1:<port>/callback?state=<state>&code=<token>
    ```
-   Receives `{access_token, refresh_token, expires_in, token_type: "Bearer"}`.
-6. Stores tokens in `~/.config/nortezh/credentials.json` (`0600`).
-7. Browser sees "You can close this window"; CLI shuts the loopback server down.
+5. CLI's loopback handler verifies `state` matches, then saves `{ token: <code>, expires_at: now()+7d }` to `~/.config/ntzh/credentials.json` (`0600`).
+6. Browser sees a small "You can close this window. Logged in as <email>." page; CLI shuts the loopback server down.
 
-**Refresh:** wrapped inside `api.Client`. On any 401, attempt one refresh (`grant_type=refresh_token`); retry the request once. On failure, return `ErrUnauthenticated` and instruct the user to re-run `nortezh login`.
+`expires_at` is a local hint only — the server is the source of truth. On 401 the CLI prints `Error: not logged in. Run 'ntzh login'.` and exits 1. **There is no refresh-and-retry path:** the backend does not issue refresh tokens (the minted token is opaque, 7-day hard expiry).
 
-**Logout:** wipe `credentials.json`. No server-side revocation in v0.1.
+### 5.2 `ntzh login --service-account <email> --key-file <path>` (headless, optional)
 
-### 5.1 Backend dependency
+For CI / SSH where a browser isn't available. The backend already supports basic-auth service accounts (`api/auth/serviceaccount.go`).
 
-The CLI cannot complete a real login until `nortezh-backend` ships:
+- CLI reads the key from `<path>` (or `--key -` for stdin), saves `{ email, key }` to `credentials.json` (`0600`).
+- API client sends `Authorization: Basic base64(email:key)` instead of `Bearer`.
+- No expiry; rotated via the existing `serviceaccount.createKey` / `serviceaccount.deleteKey` endpoints.
 
-1. `POST /user/auth/oauth/authorize` — issues code, requires PKCE, accepts loopback redirect URIs.
-2. `POST /user/auth/oauth/token` — supports `authorization_code` and `refresh_token` grants.
-3. Bearer-token middleware that accepts `Authorization: Bearer <access_token>` alongside session cookies on all protected routes.
-4. Registered public client `nortezh-cli` (no secret; native app + PKCE).
+Both modes write to the same `credentials.json`; the file's shape carries which mode is active.
 
-Implementation against a `httptest.Server` fake unblocks the CLI work; real end-to-end usage waits on the backend.
+### 5.3 `ntzh logout`
+
+Wipes `credentials.json`. No server-side revocation in v0.1. (The backend exposes `/user/auth/signout?token=...` for the interactive mode — wire it as a follow-up.)
 
 ## 6. API client
 
@@ -115,9 +106,9 @@ Single entry point in `internal/api`:
 
 ```go
 type Client struct {
-    BaseURL    string             // {server}/user
+    BaseURL    string         // {server}/user
     HTTPClient *http.Client
-    Tokens     *auth.TokenSource  // refresh-aware
+    Creds      auth.Creds     // bearer token OR service-account email+key
     Debug      bool
 }
 
@@ -127,7 +118,7 @@ func (c *Client) Invoke(ctx context.Context, method string, body, out any) error
 - `method` is the arpc route name, e.g. `"deployment.list"`.
 - Always `POST` to `BaseURL + "/" + method`, `Content-Type: application/json`.
 - `body == nil` → sends `{}`. `out == nil` → result is discarded.
-- `Authorization: Bearer <access_token>` injected by `TokenSource`.
+- `Authorization` header injected by `Creds`: `Bearer <token>` for interactive login, `Basic base64(email:key)` for service-account mode.
 
 **Envelope unwrap:**
 
@@ -140,9 +131,11 @@ type envelope struct {
 ```
 
 - `ok=true` → `json.Unmarshal(env.Result, out)`.
-- `ok=false` → return `*api.Error{Code, Message, HTTPStatus}`.
+- `ok=false` and `error.code == "UNAUTHORIZED"` → return `ErrUnauthenticated`.
+- `ok=false` (other) → return `*api.Error{Code, Message, HTTPStatus}`.
 - Non-2xx HTTP → return `*api.Error{Code: "http_error", HTTPStatus: ...}`.
-- 401 → refresh-and-retry path (one attempt only).
+
+No refresh-and-retry: the backend issues opaque 7-day tokens with no refresh, so 401 always means "log in again".
 
 **Typed wrappers** in `internal/api/deployment.go` and `project.go` — only the v0.1 calls. Each is a 3-line shim around `Invoke`.
 
@@ -156,25 +149,27 @@ type LogLine    struct { Timestamp time.Time; Stream, Line string }
 
 **Debug mode** (`--debug`): logs method, request body, response status, response body to stderr, truncated to 4 KB per direction. **Never** logs the `Authorization` header.
 
-**User-facing errors:** CLI renders `*api.Error` as `Error: {Code}: {Message}` to stderr with exit 1. `ErrUnauthenticated` → `Error: not logged in. Run 'nortezh login'.`
+**User-facing errors:** CLI renders `*api.Error` as `Error: {Code}: {Message}` to stderr with exit 1. `ErrUnauthenticated` → `Error: not logged in. Run 'ntzh login'.`
 
 ## 7. Config & precedence
 
-- `~/.config/nortezh/config.json` (`0644`):
+- `~/.config/ntzh/config.json` (`0644`):
   ```json
-  {
-    "server": "https://api.nortezh.com",
-    "default_project": { "id": "prj_01H...", "name": "myproj" }
-  }
+  { "server": "https://api.nortezh.com" }
   ```
-- `~/.config/nortezh/credentials.json` (`0600`):
+- `~/.config/ntzh/credentials.json` (`0600`), one of two shapes:
   ```json
-  { "access_token": "...", "refresh_token": "...", "expires_at": "2026-05-18T07:30:00Z" }
+  // interactive (Google) login
+  { "kind": "bearer", "token": "<opaque>", "expires_at": "2026-05-25T07:30:00Z" }
+  ```
+  ```json
+  // service account
+  { "kind": "service_account", "email": "ci@example.com", "key": "<opaque>" }
   ```
 
 Path resolution via `os.UserConfigDir()` (honors `XDG_CONFIG_HOME`).
 
-**Precedence:** flag > env (`NORTEZH_SERVER`, `NORTEZH_CONFIG_DIR`) > config file > built-in default.
+**Precedence:** flag > env (`NTZH_SERVER`, `NTZH_PROJECT`, `NTZH_CONFIG_DIR`) > config file > built-in default.
 
 ## 8. Output
 
@@ -195,12 +190,12 @@ type Printer interface {
 
 | Package | What to cover |
 |---|---|
-| `internal/api` | success, error envelope, 401-then-refresh-then-retry, 401-after-refresh-fails, non-2xx HTTP, debug redaction of `Authorization`. Uses `httptest.Server`. |
-| `internal/auth` | PKCE pair length/charset, state mismatch rejection, callback parses `code`, loopback server picks a free port. Browser-open is injected: `OpenBrowser func(url string) error`. |
+| `internal/api` | success, error envelope, `UNAUTHORIZED` → `ErrUnauthenticated`, non-2xx HTTP, Bearer vs Basic header selection, debug redaction of `Authorization`. Uses `httptest.Server`. |
+| `internal/auth` | loopback picks a free port, state mismatch rejected with 400, callback parses `code`, browser-open is injected (`OpenBrowser func(url string) error`), credentials round-trip both kinds (`bearer`, `service_account`). |
 | `internal/config` | round-trip read/write; `credentials.json` is `0600`; env/flag/file precedence. |
 | `internal/cli` | per-subcommand. Use a fake `api.Client` via an interface, not the struct. Instantiate `cobra.Command` per test — no globals. Cover happy path + one error path per command. |
 
-No backend integration tests in v0.1. Future: `_integration_test.go` behind a `//go:build integration` tag once the backend ships OAuth endpoints.
+No backend integration tests in v0.1. Future: `_integration_test.go` behind a `//go:build integration` tag, hitting a staging backend with a fixed service-account credential.
 
 `go test ./...` is the standard run.
 
@@ -213,7 +208,8 @@ No backend integration tests in v0.1. Future: `_integration_test.go` behind a `/
 
 ## 11. Risks & open questions
 
-1. **Auth backend doesn't exist.** Tracked in §5.1. Until it lands, `nortezh login` is testable only against fakes.
-2. **arpc envelope schema.** Spec assumes `{ok, result, error: {code, message}}`. Confirm against `backend/pkg/api` before wiring the client.
-3. **`deployment.logRevision` payload shape.** Currently assumed to return an array; if it streams or paginates, `LogLine` and the logs command need revisiting.
-4. **Public client registration.** `nortezh-cli` as a registered OAuth client (no secret) requires a backend admin step; document as a prerequisite.
+1. **7-day hard token expiry, no refresh.** Users will hit re-login every week. Acceptable for v0.1; revisit if it bites. Backend issuing longer-lived or refreshable tokens is the proper fix.
+2. **Open-redirect on backend `/user/auth/?callback=...`.** The `callback` query param is not allowlisted server-side. Loopback works because only the CLI process holds the port, but a future hardening pass should restrict allowed callback prefixes (incl. `http://127.0.0.1:*`).
+3. **arpc envelope schema.** Spec assumes `{ok, result, error: {code, message}}` and the `UNAUTHORIZED` code string from `api/handler.go:244`. Confirm shape against `backend/pkg/api` before wiring the client.
+4. **`deployment.logRevision` payload shape.** Currently assumed to return an array; if it streams or paginates, `LogLine` and the logs command need revisiting.
+5. **Headless login UX.** Service-account mode requires the user to create a key in the web UI first. Document this in `README` and surface a helpful error when interactive login is attempted in a no-browser environment.
