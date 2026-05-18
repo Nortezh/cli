@@ -18,6 +18,7 @@ pipeline.
 - [Usage](#usage)
 - [Configuration](#configuration)
 - [Scripting & CI](#scripting--ci)
+- [Shell completion](#shell-completion)
 - [Development](#development)
 - [License](#license)
 
@@ -190,6 +191,46 @@ flag  >  env var  >  config file  >  default
 ```
 
 All commands exit non-zero on failure; errors are written to stderr.
+
+## Shell completion
+
+`ntzh` ships completion scripts for `bash`, `zsh`, `fish`, and `powershell`
+via `ntzh completion <shell>`.
+
+### zsh
+
+Quick test in the current shell:
+
+```sh
+source <(ntzh completion zsh)
+compdef _ntzh ntzh
+```
+
+Persistent install — make sure `compinit` is enabled in your `~/.zshrc`:
+
+```sh
+autoload -Uz compinit && compinit
+```
+
+Then write the script to a directory on your `fpath`:
+
+```sh
+ntzh completion zsh > "${fpath[1]}/_ntzh"
+# or, on Homebrew:
+ntzh completion zsh > "$(brew --prefix)/share/zsh/site-functions/_ntzh"
+```
+
+Restart the shell (`exec zsh`) and tab-complete on `ntzh `.
+
+### bash / fish / powershell
+
+```sh
+ntzh completion bash --help
+ntzh completion fish --help
+ntzh completion powershell --help
+```
+
+Each subcommand prints shell-specific install instructions.
 
 ## Development
 
