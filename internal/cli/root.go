@@ -34,7 +34,3 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
-// Temporary stubs — replaced when Task 10 creates project.go and deployment.go.
-// Remove the matching stub here once the real file exists.
-func newProjectCmd(*Globals) *cobra.Command    { return &cobra.Command{Use: "project"} }
-func newDeploymentCmd(*Globals) *cobra.Command { return &cobra.Command{Use: "deployment"} }
