@@ -53,7 +53,7 @@ func Login(ctx context.Context, server string, open OpenBrowserFunc) (Creds, err
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, `<html><body><h2>Logged in.</h2><p>You can close this window.</p></body></html>`)
+		fmt.Fprint(w, `<!doctype html><html><head><meta charset="utf-8"><title>Logged in</title></head><body><h2>Logged in.</h2><p id="msg">Attempting to close this window…</p><script>(function(){try{window.open('','_self');window.close();}catch(e){}setTimeout(function(){var m=document.getElementById('msg');if(m){m.textContent='You can close this window.';}},500);})();</script></body></html>`)
 		resultCh <- result{token: code}
 	})
 
