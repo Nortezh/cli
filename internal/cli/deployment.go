@@ -131,9 +131,8 @@ rolls forward; on success the call returns with no body (exit 0).
 Use 'ntzh deployment rollback' to revert if needed.
 
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
-		Example: `  ntzh deployment deploy api \
-    --image ghcr.io/acme/api:v1.2.3 \
-    --project acme`,
+		Example: `  ntzh deployment deploy <deployment> --project=<project> --image=<image> --location=<location>
+  ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if image == "" {

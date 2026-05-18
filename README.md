@@ -26,7 +26,8 @@ Bearer credentials expire after 7 days and there is **no refresh** — re-run
 
     ntzh deployment list      --project <name|slug>
     ntzh deployment get       --project <name|slug> <deployment> [--location <id>]
-    ntzh deployment deploy    --project <name|slug> <deployment> --image <ref>
+    ntzh deployment deploy    <deployment> --project=<project> --image=<image> --location=<location>
+    # e.g. ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1
     ntzh deployment rollback  --project <name|slug> <deployment> --to <revision>
     ntzh deployment revisions --project <name|slug> <deployment>
 
