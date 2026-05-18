@@ -8,6 +8,21 @@ description: Use when the user wants to deploy, ship, or release a service to No
 `ntzh` deploys container images to the [Nortezh](https://nortezh.com) platform.
 For anything beyond the deploy recipe below, run `ntzh <subcommand> --help`.
 
+## Before you deploy
+
+If the user didn't give you all the values, **discover them — don't guess**:
+
+1. **Project** — `ntzh project list`. Match by name/slug from the user's prompt; if ambiguous, ask. `NTZH_PROJECT` / `--project` from the user always wins.
+2. **Deployment name** — `ntzh deployment list --project=<p>`. This is the first positional arg of `deploy`, **not** the project. Often shaped like `<service>-<env>` (e.g. `api-prod`).
+3. **Image** — take from the user's message, the latest pushed tag, or ask. Never invent a tag.
+4. **Location** — **omit `--location`** unless the user specified one; the CLI auto-resolves it from `deployment.list`. Set `NTZH_LOCATION` to skip the lookup in CI.
+
+Confirm the target before a prod deploy:
+
+```sh
+ntzh deployment get <name> --project=<p>
+```
+
 ## Deploy recipe
 
 ```sh
