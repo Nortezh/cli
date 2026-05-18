@@ -5,8 +5,8 @@ import "time"
 type Project struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
-	SID       string    `json:"sid"`
-	CreatedAt time.Time `json:"created_at"`
+	Slug      string    `json:"no"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Deployment struct {

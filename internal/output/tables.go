@@ -6,10 +6,10 @@ import (
 	"nortezh-cli/internal/api"
 )
 
-func projectHeaders() []string { return []string{"NAME", "ID", "CREATED"} }
+func projectHeaders() []string { return []string{"NAME", "PROJECT_ID", "CREATED_AT"} }
 
 func projectRow(p api.Project) []string {
-	return []string{p.Name, p.ID, p.CreatedAt.Format("2006-01-02")}
+	return []string{p.Name, p.ID, p.CreatedAt.Format("2006-01-02 15:04")}
 }
 
 func deploymentHeaders() []string {
