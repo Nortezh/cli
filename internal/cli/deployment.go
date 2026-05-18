@@ -21,11 +21,11 @@ looks it up via 'deployment.list'. Set NTZH_LOCATION to skip the lookup.
 
 A "deployment" is identified by its name (e.g. 'api', 'web') and has
 numbered revisions you can roll back to or inspect.`,
-		Example: `  ntzh deployment list --project acme
-  ntzh deployment get api --project acme --output json
-  ntzh deployment deploy api --image ghcr.io/acme/api:v1.2.3 --project acme
-  ntzh deployment rollback api --to 17 --project acme
-  ntzh deployment revisions api --project acme`,
+		Example: `  ntzh deployment list --project=acme
+  ntzh deployment get staging-bo --project=acme --location=bkk-1
+  ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1
+  ntzh deployment rollback staging-bo --project=acme --to=17 --location=bkk-1
+  ntzh deployment revisions staging-bo --project=acme --location=bkk-1`,
 	}
 	cmd.AddCommand(newDeploymentListCmd(g))
 	cmd.AddCommand(newDeploymentGetCmd(g))
@@ -43,8 +43,8 @@ func newDeploymentListCmd(g *Globals) *cobra.Command {
 
 Output columns (table): name, type, status, location, replicas, last_deployed.
 Use '--output json' for the full structured response.`,
-		Example: `  ntzh deployment list --project acme
-  ntzh deployment list --project acme --output json`,
+		Example: `  ntzh deployment list --project=<project>
+  ntzh deployment list --project=acme --output=json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name, err := requireProject(g.Project)
 			if err != nil {
@@ -81,8 +81,8 @@ selected project. Returns the current revision, image reference, status,
 replica counts, memory request, and routing URLs.
 
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
-		Example: `  ntzh deployment get api --project acme
-  ntzh deployment get api --project acme --location bkk-1 --output json`,
+		Example: `  ntzh deployment get <deployment> --project=<project> --location=<location>
+  ntzh deployment get staging-bo --project=acme --location=bkk-1 --output=json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name, err := requireProject(g.Project)
@@ -180,7 +180,8 @@ Use 'ntzh deployment revisions <name>' to discover revision numbers.
 --to must be a positive integer.
 
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
-		Example: `  ntzh deployment rollback api --to 17 --project acme`,
+		Example: `  ntzh deployment rollback <deployment> --project=<project> --to=<revision> --location=<location>
+  ntzh deployment rollback staging-bo --project=acme --to=17 --location=bkk-1`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if to <= 0 {
@@ -228,8 +229,8 @@ revision history, not pod log lines. For runtime pod logs, fetch the
 signed 'logUrl' from 'ntzh deployment get <name>' and stream from there.
 
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
-		Example: `  ntzh deployment revisions api --project acme
-  ntzh deployment revisions api --project acme --output json`,
+		Example: `  ntzh deployment revisions <deployment> --project=<project> --location=<location>
+  ntzh deployment revisions staging-bo --project=acme --location=bkk-1 --output=json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name, err := requireProject(g.Project)
