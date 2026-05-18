@@ -34,15 +34,47 @@ func (c *Client) GetDeployment(ctx context.Context, project, location, name stri
 	return &out, nil
 }
 
+// DeployOptions carries the optional fields the backend accepts as a partial
+// update on deployment.deploy. nil pointers mean "no change".
+type DeployOptions struct {
+	MinReplica *int
+	MaxReplica *int
+	Port       *int
+	Protocol   *string
+	Internal   *bool
+	AddEnv     map[string]string
+	RemoveEnv  []string
+}
+
 // Deploy creates a new revision of an existing deployment with the given image.
+// Optional fields on opts patch the deployment (nil = leave unchanged).
 // The backend returns no result body; success is signalled by a nil error.
-func (c *Client) Deploy(ctx context.Context, project, location, name, image string) error {
+func (c *Client) Deploy(ctx context.Context, project, location, name, image string, opts DeployOptions) error {
 	body := struct {
-		Project  string `json:"project"`
-		Location string `json:"location"`
-		Name     string `json:"name"`
-		Image    string `json:"image"`
-	}{project, location, name, image}
+		Project    string            `json:"project"`
+		Location   string            `json:"location"`
+		Name       string            `json:"name"`
+		Image      string            `json:"image"`
+		MinReplica *int              `json:"minReplica"`
+		MaxReplica *int              `json:"maxReplica"`
+		Port       *int              `json:"port"`
+		Protocol   *string           `json:"protocol"`
+		Internal   *bool             `json:"internal"`
+		AddEnv     map[string]string `json:"addEnv"`
+		RemoveEnv  []string          `json:"removeEnv"`
+	}{
+		Project:    project,
+		Location:   location,
+		Name:       name,
+		Image:      image,
+		MinReplica: opts.MinReplica,
+		MaxReplica: opts.MaxReplica,
+		Port:       opts.Port,
+		Protocol:   opts.Protocol,
+		Internal:   opts.Internal,
+		AddEnv:     opts.AddEnv,
+		RemoveEnv:  opts.RemoveEnv,
+	}
 	return c.Invoke(ctx, "deployment.deploy", body, nil)
 }
 

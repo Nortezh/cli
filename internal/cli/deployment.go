@@ -2,9 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/nortezh/cli/internal/api"
 	"github.com/nortezh/cli/internal/output"
 )
 
@@ -118,8 +120,15 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 
 func newDeploymentDeployCmd(g *Globals) *cobra.Command {
 	var (
-		image    string
-		location string
+		image      string
+		location   string
+		setEnv     []string
+		removeEnv  []string
+		port       int
+		protocol   string
+		internal   bool
+		minReplica int
+		maxReplica int
 	)
 	cmd := &cobra.Command{
 		Use:   "deploy <name>",
@@ -128,15 +137,25 @@ func newDeploymentDeployCmd(g *Globals) *cobra.Command {
 container image referenced by --image. The backend pulls the image and
 rolls forward; on success the call returns with no body (exit 0).
 
+Optional --set-env / --remove-env / --port / --protocol / --internal /
+--min-replica / --max-replica flags patch the deployment in the same
+revision; omitted flags leave the existing value unchanged.
+
 Use 'ntzh deployment rollback' to revert if needed.
 
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
 		Example: `  ntzh deployment deploy <deployment> --project=<project> --image=<image> --location=<location>
-  ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1`,
+  ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1
+  ntzh deployment deploy api --project=acme --image=img:v2 --set-env DB_URL=postgres://... --set-env DEBUG=true
+  ntzh deployment deploy api --project=acme --image=img:v2 --remove-env STALE_FLAG --port 8080`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if image == "" {
 				return fmt.Errorf("--image is required")
+			}
+			addEnv, err := parseSetEnv(setEnv)
+			if err != nil {
+				return err
 			}
 			name, err := requireProject(g.Project)
 			if err != nil {
@@ -154,7 +173,23 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 			if err != nil {
 				return err
 			}
-			if err := c.Deploy(cmd.Context(), pslug, loc, args[0], image); err != nil {
+			opts := api.DeployOptions{AddEnv: addEnv, RemoveEnv: removeEnv}
+			if cmd.Flags().Changed("port") {
+				opts.Port = &port
+			}
+			if cmd.Flags().Changed("protocol") {
+				opts.Protocol = &protocol
+			}
+			if cmd.Flags().Changed("internal") {
+				opts.Internal = &internal
+			}
+			if cmd.Flags().Changed("min-replica") {
+				opts.MinReplica = &minReplica
+			}
+			if cmd.Flags().Changed("max-replica") {
+				opts.MaxReplica = &maxReplica
+			}
+			if err := c.Deploy(cmd.Context(), pslug, loc, args[0], image, opts); err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "%s: deploying %s\n", args[0], image)
@@ -163,7 +198,30 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 	}
 	cmd.Flags().StringVar(&image, "image", "", "container image reference, e.g. ghcr.io/acme/api:v1.2.3 (required)")
 	cmd.Flags().StringVar(&location, "location", "", "cluster/location ID (auto-detected if omitted; honors NTZH_LOCATION)")
+	cmd.Flags().StringArrayVar(&setEnv, "set-env", nil, "merge env var KEY=VALUE (repeatable)")
+	cmd.Flags().StringArrayVar(&removeEnv, "remove-env", nil, "remove env var by KEY (repeatable)")
+	cmd.Flags().IntVar(&port, "port", 0, "container port the service listens on")
+	cmd.Flags().StringVar(&protocol, "protocol", "", "service protocol (http, http2, tcp, ...)")
+	cmd.Flags().BoolVar(&internal, "internal", false, "expose only inside the cluster (no public URL)")
+	cmd.Flags().IntVar(&minReplica, "min-replica", 0, "minimum replica count")
+	cmd.Flags().IntVar(&maxReplica, "max-replica", 0, "maximum replica count")
 	return cmd
+}
+
+// parseSetEnv parses KEY=VALUE pairs from repeated --set-env flags.
+func parseSetEnv(pairs []string) (map[string]string, error) {
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]string, len(pairs))
+	for _, kv := range pairs {
+		i := strings.IndexByte(kv, '=')
+		if i <= 0 {
+			return nil, fmt.Errorf("--set-env: expected KEY=VALUE, got %q", kv)
+		}
+		out[kv[:i]] = kv[i+1:]
+	}
+	return out, nil
 }
 
 func newDeploymentRollbackCmd(g *Globals) *cobra.Command {

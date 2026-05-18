@@ -117,11 +117,14 @@ ntzh deployment list --project=<project>
 # Inspect one
 ntzh deployment get <deployment> --project=<project> --location=<location>
 
-# Ship a new image
+# Ship a new image (optionally patch env, ports, replicas in the same revision)
 ntzh deployment deploy <deployment> \
   --project=<project> \
   --image=<image> \
-  --location=<location>
+  --location=<location> \
+  [--set-env KEY=VALUE ...] [--remove-env KEY ...] \
+  [--port <n>] [--protocol <p>] [--internal=<bool>] \
+  [--min-replica <n>] [--max-replica <n>]
 
 # Roll back to a previous revision
 ntzh deployment rollback <deployment> \
@@ -144,6 +147,11 @@ ntzh deployment deploy staging-bo \
 
 Deployment list columns (table mode): `NAME`, `TYPE`, `STATUS`, `LOCATION`,
 `REPLICAS`, `LAST_DEPLOYED`.
+
+`ntzh deployment get <name>` prints the current env (`ENV:KEY` rows in table
+mode, or the `env` object under `--output=json`). Use `--set-env` / `--remove-env`
+on `deploy` to patch it — each flag is optional, omitted flags leave the value
+unchanged.
 
 ### Domains
 

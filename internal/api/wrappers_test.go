@@ -81,13 +81,29 @@ func TestDeploy(t *testing.T) {
 	c, seen := captureClient(t, "deployment.deploy",
 		`{"ok":true,"result":null}`)
 
-	if err := c.Deploy(context.Background(), "proj", "bkk-1", "web", "img:1"); err != nil {
+	port := 8080
+	if err := c.Deploy(context.Background(), "proj", "bkk-1", "web", "img:1", DeployOptions{
+		AddEnv:    map[string]string{"FOO": "bar"},
+		RemoveEnv: []string{"OLD"},
+		Port:      &port,
+	}); err != nil {
 		t.Fatalf("Deploy: %v", err)
 	}
 	var sent map[string]any
 	_ = json.Unmarshal([]byte(*seen), &sent)
 	if sent["project"] != "proj" || sent["location"] != "bkk-1" || sent["name"] != "web" || sent["image"] != "img:1" {
 		t.Fatalf("body: %v", sent)
+	}
+	add, _ := sent["addEnv"].(map[string]any)
+	if add["FOO"] != "bar" {
+		t.Fatalf("addEnv: %v", sent)
+	}
+	rm, _ := sent["removeEnv"].([]any)
+	if len(rm) != 1 || rm[0] != "OLD" {
+		t.Fatalf("removeEnv: %v", sent)
+	}
+	if sent["port"].(float64) != 8080 {
+		t.Fatalf("port: %v", sent)
 	}
 }
 

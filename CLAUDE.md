@@ -48,6 +48,8 @@ Env vars: `NTZH_SERVER`, `NTZH_PROJECT`, `NTZH_LOCATION`, `NTZH_CONFIG_DIR` (the
 - All request/response JSON uses **camelCase** (`createdAt`, `actionStatus`, `lastDeployedAt`, `minReplicas`, `perPage`). Snake_case caused silent unmarshal failures (zero-value rows) before — keep struct tags camelCase.
 - Pagination on `deployment.list`: `{"paginate":{"page":1,"perPage":40},"project":"<slug>"}`.
 - Deployment-scoped methods (`deployment.get`, `deployment.deploy`, `deployment.rollback`, `deployment.logRevision`) all take `{project, location, name, ...}`. `--location` is auto-resolved from `deployment.list` if omitted (see `resolveLocation`); `NTZH_LOCATION` short-circuits the lookup.
+- `deployment.deploy` accepts partial-update fields beyond `image`: `addEnv` (merge), `removeEnv` (delete keys), and pointer-shaped `port`, `protocol`, `internal`, `minReplica`, `maxReplica`. The CLI surfaces these via `api.DeployOptions` and `--set-env / --remove-env / --port / --protocol / --internal / --min-replica / --max-replica`. Only send pointer fields when the user passed the flag (use `cmd.Flags().Changed(...)` — never send zero values, they would overwrite real state).
+- `deployment.get` returns `env` as `map[string]string`. `DeploymentDetail.Env` carries it; the table printer emits one `ENV:KEY  VALUE` row per key (sorted) after the main fields.
 
 ### Output (`internal/output/`)
 `Printer` interface with `table` (default) and `json` implementations, selected by `--output`. Table formatters live in `tables.go` per resource type.

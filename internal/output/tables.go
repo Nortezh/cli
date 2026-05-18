@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/nortezh/cli/internal/api"
@@ -41,7 +42,7 @@ func deploymentDetailRows(d api.DeploymentDetail) [][]string {
 	if !d.LatestDeployedAt.IsZero() {
 		last = d.LatestDeployedAt.Format("2006-01-02 15:04")
 	}
-	return [][]string{
+	rows := [][]string{
 		{"NAME", d.Name},
 		{"PROJECT", d.Project},
 		{"LOCATION", d.Location},
@@ -55,6 +56,17 @@ func deploymentDetailRows(d api.DeploymentDetail) [][]string {
 		{"LAST_DEPLOYED", last},
 		{"DEPLOYED_BY", d.DeployedByEmail},
 	}
+	if len(d.Env) > 0 {
+		keys := make([]string, 0, len(d.Env))
+		for k := range d.Env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			rows = append(rows, []string{"ENV:" + k, d.Env[k]})
+		}
+	}
+	return rows
 }
 
 func revisionHeaders() []string {

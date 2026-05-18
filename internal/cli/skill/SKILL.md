@@ -24,7 +24,21 @@ Confirm prod targets first: `ntzh deployment get <name> --project=<p>`.
 ntzh deployment deploy <name> --project=<p> --image=<image:tag>
 ```
 
-Returns when the revision is accepted — does not wait for rollout. Poll with `ntzh deployment get` or `ntzh deployment revisions`.
+Patch other fields in the same revision (each flag is optional; omitted = unchanged):
+
+```sh
+ntzh deployment deploy api --project=<p> --image=img:v2 \
+  --set-env DB_URL=postgres://... --set-env DEBUG=true \
+  --remove-env STALE_FLAG \
+  --port 8080 --protocol http --internal=false \
+  --min-replica 1 --max-replica 3
+```
+
+- `--set-env KEY=VALUE` — repeatable; merges into existing env (does not replace all).
+- `--remove-env KEY` — repeatable; deletes a key.
+- `--port`, `--protocol`, `--internal`, `--min-replica`, `--max-replica` — only sent when the flag is present.
+
+Returns when the revision is accepted — does not wait for rollout. Poll with `ntzh deployment get` or `ntzh deployment revisions`. `ntzh deployment get <name>` includes the current env (table rows prefixed `ENV:`, or the `env` object under `--output json`).
 
 ## Routes & domains
 
