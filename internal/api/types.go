@@ -70,6 +70,96 @@ type Resource struct {
 	Limits   ResourceValue `json:"limits"`
 }
 
+// Route is one row in route.list.
+type Route struct {
+	ID         string         `json:"id"`
+	Domain     string         `json:"domain"`
+	Path       string         `json:"path"`
+	Status     int            `json:"status"`
+	Deployment RouteDeployment `json:"deployment"`
+	Location   RouteLocation   `json:"location"`
+	Config     RouteConfig     `json:"config"`
+}
+
+// RouteDetail mirrors route.get; adds CreatedAt/CreatedBy and richer location.
+type RouteDetail struct {
+	ID         string         `json:"id"`
+	Domain     string         `json:"domain"`
+	Path       string         `json:"path"`
+	Location   RouteLocation   `json:"location"`
+	Deployment RouteDeployment `json:"deployment"`
+	Config     RouteConfig     `json:"config"`
+	Status     int            `json:"status"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	CreatedBy  string         `json:"createdBy"`
+}
+
+type RouteDeployment struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type RouteLocation struct {
+	Slug     string `json:"slug"`
+	Name     string `json:"name"`
+	Endpoint string `json:"endpoint"`
+}
+
+type RouteConfig struct {
+	BasicAuth   *RouteBasicAuth `json:"basicAuth"`
+	RewritePath *string         `json:"rewritePath"`
+}
+
+type RouteBasicAuth struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Domain is one row in domain.list.
+type Domain struct {
+	ID        int64     `json:"id"`
+	Location  string    `json:"location"`
+	Domain    string    `json:"domain"`
+	Wildcard  bool      `json:"wildcard"`
+	CDN       bool      `json:"cdn"`
+	Status    int       `json:"status"`
+	Action    int       `json:"action"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// DomainDetail mirrors domain.get.
+type DomainDetail struct {
+	Location     string              `json:"location"`
+	Domain       string              `json:"domain"`
+	Wildcard     bool                `json:"wildcard"`
+	CDN          bool                `json:"cdn"`
+	Status       int                 `json:"status"`
+	Action       int                 `json:"action"`
+	CreatedAt    time.Time           `json:"createdAt"`
+	Verification DomainVerification  `json:"verification"`
+	DNSConfig    DomainDNSConfig     `json:"dnsConfig"`
+}
+
+type DomainVerification struct {
+	Ownership DomainVerificationOwnership `json:"ownership"`
+	SSL       DomainVerificationSSL       `json:"ssl"`
+}
+
+type DomainVerificationOwnership struct {
+	Type   string   `json:"type"`
+	Name   string   `json:"name"`
+	Value  string   `json:"value"`
+	Errors []string `json:"errors"`
+}
+
+type DomainVerificationSSL struct {
+	Pending bool `json:"pending"`
+}
+
+type DomainDNSConfig struct {
+	CName []string `json:"cname"`
+}
+
 // RevisionItem is one entry in deployment.logRevision (revision history).
 type RevisionItem struct {
 	Revision        int        `json:"revision"`

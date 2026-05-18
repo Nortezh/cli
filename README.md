@@ -7,8 +7,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 `ntzh` lets you list projects, ship new container images, roll back to a previous
-revision, and inspect deployment history — straight from your terminal or CI
-pipeline.
+revision, inspect deployment history, and manage routes/domains — straight from
+your terminal or CI pipeline.
 
 ## Table of Contents
 
@@ -144,6 +144,32 @@ ntzh deployment deploy staging-bo \
 
 Deployment list columns (table mode): `NAME`, `TYPE`, `STATUS`, `LOCATION`,
 `REPLICAS`, `LAST_DEPLOYED`.
+
+### Domains
+
+```sh
+ntzh domain list   --project=<project>
+ntzh domain get    <domain> --project=<project>
+ntzh domain create <domain> --project=<project> --location=<location> [--wildcard] [--cdn]
+ntzh domain delete <domain> --project=<project>
+```
+
+### Routes
+
+A route binds `(domain, path)` to a web-service deployment. The owning project
+must already have the domain registered.
+
+```sh
+ntzh route list   --project=<project> [--search=<q>]
+ntzh route get    --project=<project> --domain=<domain> --path=<path>
+ntzh route create --project=<project> --domain=<domain> --path=<path> --target=<deployment> \
+  [--location=<location>] [--rewrite-path=<expr>] [--skip-domain-verify]
+ntzh route delete --project=<project> --domain=<domain> --path=<path>
+```
+
+`--target` accepts a deployment name (e.g. `api-prod`); the CLI prepends
+`deployment://` for you. `--location` is auto-resolved from the target
+deployment when omitted.
 
 ## Configuration
 

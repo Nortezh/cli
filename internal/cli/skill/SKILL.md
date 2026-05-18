@@ -26,6 +26,20 @@ ntzh deployment deploy <name> --project=<p> --image=<image:tag>
 
 Returns when the revision is accepted — does not wait for rollout. Poll with `ntzh deployment get` or `ntzh deployment revisions`.
 
+## Routes & domains
+
+A route binds `(domain, path)` to a web-service deployment. The domain must first be registered on the project.
+
+```sh
+ntzh domain list   --project=<p>
+ntzh domain create --project=<p> --location=<l> <domain>           # add --wildcard / --cdn as needed
+ntzh route  list   --project=<p>
+ntzh route  create --project=<p> --domain=<d> --path=/ --target=<deployment-name>
+ntzh route  delete --project=<p> --domain=<d> --path=/
+```
+
+`--location` on `route create` is auto-resolved from the target deployment if omitted. The CLI prepends `deployment://` to `--target` for you.
+
 ## Auth
 
 ```sh

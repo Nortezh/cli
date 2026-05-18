@@ -108,6 +108,114 @@ func TestRollback(t *testing.T) {
 	}
 }
 
+func TestListRoutes(t *testing.T) {
+	c, seen := captureClient(t, "route.list",
+		`{"ok":true,"result":{"items":[{"id":"r1","domain":"api.acme.com","path":"/","status":1,"deployment":{"name":"api-prod"},"location":{"slug":"bkk-1"}}]}}`)
+
+	rs, err := c.ListRoutes(context.Background(), "acme", "api")
+	if err != nil {
+		t.Fatalf("ListRoutes: %v", err)
+	}
+	if len(rs) != 1 || rs[0].Domain != "api.acme.com" || rs[0].Deployment.Name != "api-prod" {
+		t.Fatalf("got %+v", rs)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" || sent["search"] != "api" {
+		t.Fatalf("body: %v", sent)
+	}
+}
+
+func TestCreateRoute(t *testing.T) {
+	c, seen := captureClient(t, "route.create",
+		`{"ok":true,"result":{"id":"r123"}}`)
+
+	rw := "/$1"
+	id, err := c.CreateRoute(context.Background(), CreateRouteInput{
+		Project:     "acme",
+		Location:    "bkk-1",
+		Domain:      "api.acme.com",
+		Path:        "/",
+		Target:      "deployment://api-prod",
+		RewritePath: &rw,
+	})
+	if err != nil {
+		t.Fatalf("CreateRoute: %v", err)
+	}
+	if id != "r123" {
+		t.Fatalf("id: %s", id)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" || sent["domain"] != "api.acme.com" || sent["target"] != "deployment://api-prod" {
+		t.Fatalf("body: %v", sent)
+	}
+	cfg, _ := sent["config"].(map[string]any)
+	if cfg["rewritePath"] != "/$1" {
+		t.Fatalf("config: %v", sent)
+	}
+}
+
+func TestDeleteRoute(t *testing.T) {
+	c, seen := captureClient(t, "route.delete", `{"ok":true,"result":null}`)
+
+	if err := c.DeleteRoute(context.Background(), "acme", "api.acme.com", "/"); err != nil {
+		t.Fatalf("DeleteRoute: %v", err)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" || sent["domain"] != "api.acme.com" || sent["path"] != "/" {
+		t.Fatalf("body: %v", sent)
+	}
+}
+
+func TestListDomains(t *testing.T) {
+	c, seen := captureClient(t, "domain.list",
+		`{"ok":true,"result":{"items":[{"id":1,"location":"bkk-1","domain":"acme.com","wildcard":false,"cdn":false,"status":1,"action":1,"createdAt":"2026-05-18T00:00:00Z"}]}}`)
+
+	ds, err := c.ListDomains(context.Background(), "acme")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	if len(ds) != 1 || ds[0].Domain != "acme.com" {
+		t.Fatalf("got %+v", ds)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" {
+		t.Fatalf("body: %v", sent)
+	}
+}
+
+func TestCreateDomain(t *testing.T) {
+	c, seen := captureClient(t, "domain.create", `{"ok":true,"result":null}`)
+
+	if err := c.CreateDomain(context.Background(), "acme", "bkk-1", "api.acme.com", true, false); err != nil {
+		t.Fatalf("CreateDomain: %v", err)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" || sent["location"] != "bkk-1" || sent["domain"] != "api.acme.com" {
+		t.Fatalf("body: %v", sent)
+	}
+	if sent["wildcard"] != true || sent["cdn"] != false {
+		t.Fatalf("flags: %v", sent)
+	}
+}
+
+func TestDeleteDomain(t *testing.T) {
+	c, seen := captureClient(t, "domain.delete", `{"ok":true,"result":null}`)
+
+	if err := c.DeleteDomain(context.Background(), "acme", "api.acme.com"); err != nil {
+		t.Fatalf("DeleteDomain: %v", err)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" || sent["domain"] != "api.acme.com" {
+		t.Fatalf("body: %v", sent)
+	}
+}
+
 func TestListRevisions(t *testing.T) {
 	c, seen := captureClient(t, "deployment.logRevision",
 		`{"ok":true,"result":{"items":[{"revision":2,"image":"img:2","status":3,"deployedByEmail":"a@b","deployedAt":"2026-05-18T00:00:00Z"}]}}`)
