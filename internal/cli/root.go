@@ -34,10 +34,7 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
-// Temporary stubs — replaced when Tasks 9 and 10 create login.go, project.go,
-// and deployment.go. Remove the matching stub here once the real file exists.
-func newLoginCmd(*Globals) *cobra.Command      { return &cobra.Command{Use: "login"} }
-func newLogoutCmd() *cobra.Command             { return &cobra.Command{Use: "logout"} }
-func newWhoamiCmd(*Globals) *cobra.Command     { return &cobra.Command{Use: "whoami"} }
+// Temporary stubs — replaced when Task 10 creates project.go and deployment.go.
+// Remove the matching stub here once the real file exists.
 func newProjectCmd(*Globals) *cobra.Command    { return &cobra.Command{Use: "project"} }
 func newDeploymentCmd(*Globals) *cobra.Command { return &cobra.Command{Use: "deployment"} }
