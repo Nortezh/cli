@@ -6,7 +6,7 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"nortezh-cli/internal/api"
+	"github.com/nortezh/cli/internal/api"
 )
 
 type Printer interface {

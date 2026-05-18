@@ -3,7 +3,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"nortezh-cli/internal/output"
+	"github.com/nortezh/cli/internal/output"
 )
 
 func newProjectCmd(g *Globals) *cobra.Command {

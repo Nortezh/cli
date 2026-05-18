@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"nortezh-cli/internal/auth"
+	"github.com/nortezh/cli/internal/auth"
 )
 
 func setupAuthed(t *testing.T) string {

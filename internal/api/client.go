@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"nortezh-cli/internal/auth"
+	"github.com/nortezh/cli/internal/auth"
 )
 
 const debugBodyLimit = 4 * 1024

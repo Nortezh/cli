@@ -1,4 +1,4 @@
-module nortezh-cli
+module github.com/nortezh/cli
 
 go 1.26.3
 

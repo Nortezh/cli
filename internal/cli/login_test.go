@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"nortezh-cli/internal/auth"
+	"github.com/nortezh/cli/internal/auth"
 )
 
 func TestLoginCmd_Bearer_HappyPath(t *testing.T) {

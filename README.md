@@ -1,64 +1,195 @@
-# ntzh — Nortezh CLI
+# ntzh
 
-Command-line client for the Nortezh deployment platform.
+> Command-line client for the [Nortezh](https://nortezh.com) deployment platform.
 
-## Install
+[![Go Reference](https://pkg.go.dev/badge/github.com/nortezh/cli.svg)](https://pkg.go.dev/github.com/nortezh/cli)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nortezh/cli)](https://goreportcard.com/report/github.com/nortezh/cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-    go install ./cmd/ntzh
+`ntzh` lets you list projects, ship new container images, roll back to a previous
+revision, and inspect deployment history — straight from your terminal or CI
+pipeline.
 
-Or build locally:
+## Table of Contents
 
-    make build      # produces ./ntzh
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Authentication](#authentication)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Scripting & CI](#scripting--ci)
+- [Development](#development)
+- [License](#license)
 
-## Auth
+## Installation
 
-    ntzh login                                       # browser-based Google login
-    ntzh login --service-account ci@acme --key-file k # headless (CI)
-    ntzh logout
-    ntzh whoami
+### From source (recommended)
 
-Bearer credentials expire after 7 days and there is **no refresh** — re-run
-`ntzh login` when prompted. Service-account credentials don't expire.
+```sh
+go install github.com/nortezh/cli/cmd/ntzh@latest
+```
 
-## Commands
+This installs the `ntzh` binary to `$(go env GOPATH)/bin`. Make sure that
+directory is on your `PATH`.
 
-    ntzh project list
+### From a clone
 
-    ntzh deployment list      --project=<project>
-    ntzh deployment get       <deployment> --project=<project> --location=<location>
-    ntzh deployment deploy    <deployment> --project=<project> --image=<image> --location=<location>
-    ntzh deployment rollback  <deployment> --project=<project> --to=<revision> --location=<location>
-    ntzh deployment revisions <deployment> --project=<project> --location=<location>
+```sh
+git clone https://github.com/nortezh/cli.git
+cd cli
+make install        # go install ./cmd/ntzh
+# or
+make build          # produces ./ntzh
+```
 
-    # e.g.
-    ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1
+Requires Go 1.26 or newer.
+
+## Quick start
+
+```sh
+ntzh login                                        # open the browser, sign in
+ntzh project list
+ntzh deployment list --project=acme
+ntzh deployment deploy staging-bo \
+  --project=acme \
+  --image=ghcr.io/acme/api:v1.2.3 \
+  --location=bkk-1
+```
+
+## Authentication
+
+`ntzh` supports two credential types. Both are stored at
+`~/.config/ntzh/credentials.json` with mode `0600`.
+
+| Mode               | Command                                                                    | When to use                |
+| ------------------ | -------------------------------------------------------------------------- | -------------------------- |
+| **Browser**        | `ntzh login`                                                               | Interactive use on a laptop |
+| **Service account**| `ntzh login --service-account=ci@acme.com --key-file=./key.txt`            | CI / headless environments  |
+
+```sh
+ntzh whoami         # show current identity
+ntzh logout         # remove stored credentials
+```
+
+> **Heads up:** Browser tokens expire after **7 days** and are **not refreshed
+> automatically**. Re-run `ntzh login` when prompted. Service-account
+> credentials do not expire.
+
+## Usage
+
+### Projects
+
+```sh
+ntzh project list
+ntzh project list --output=json
+```
+
+### Deployments
 
 `--project` accepts a project name, slug (the `no` field), or internal ID.
-It is required on every project-scoped command — there is no stored default.
-
 `--location` (cluster ID) is auto-detected via `deployment.list` when omitted.
-Set `NTZH_LOCATION` to skip the lookup.
 
-### Output
+```sh
+# List
+ntzh deployment list --project=<project>
 
-`--output table` (default) prints human-readable tables.
-`--output json` prints the raw structured response — use this for scripting.
+# Inspect one
+ntzh deployment get <deployment> --project=<project> --location=<location>
 
-`--debug` logs HTTP request/response to stderr (Authorization header redacted).
+# Ship a new image
+ntzh deployment deploy <deployment> \
+  --project=<project> \
+  --image=<image> \
+  --location=<location>
 
-Deployment list columns: `NAME`, `TYPE`, `STATUS`, `LOCATION`, `REPLICAS`,
-`LAST_DEPLOYED`.
+# Roll back to a previous revision
+ntzh deployment rollback <deployment> \
+  --project=<project> \
+  --to=<revision> \
+  --location=<location>
+
+# Revision history (newest first)
+ntzh deployment revisions <deployment> --project=<project> --location=<location>
+```
+
+#### Example
+
+```sh
+ntzh deployment deploy staging-bo \
+  --project=acme \
+  --image=ghcr.io/acme/api:v1.2.3 \
+  --location=bkk-1
+```
+
+Deployment list columns (table mode): `NAME`, `TYPE`, `STATUS`, `LOCATION`,
+`REPLICAS`, `LAST_DEPLOYED`.
 
 ## Configuration
 
-    ~/.config/ntzh/config.json       # { "server": "..." }
-    ~/.config/ntzh/credentials.json  # 0600, bearer or service_account
+`ntzh` reads two files from `~/.config/ntzh/`:
 
-Env: `NTZH_SERVER`, `NTZH_PROJECT`, `NTZH_LOCATION`, `NTZH_CONFIG_DIR`.
-Precedence: flag > env > file > default.
+```
+~/.config/ntzh/config.json       # { "server": "https://api.nortezh.com" }
+~/.config/ntzh/credentials.json  # 0600 — bearer or service_account
+```
+
+### Environment variables
+
+| Variable          | Purpose                                                  |
+| ----------------- | -------------------------------------------------------- |
+| `NTZH_SERVER`     | Override the API server URL                              |
+| `NTZH_PROJECT`    | Default `--project` for project-scoped commands          |
+| `NTZH_LOCATION`   | Default `--location`, skips the `deployment.list` lookup |
+| `NTZH_CONFIG_DIR` | Override `~/.config/ntzh`                                |
+
+### Precedence
+
+```
+flag  >  env var  >  config file  >  default
+```
+
+## Scripting & CI
+
+| Flag             | Purpose                                                                        |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `--output=json`  | Emit raw structured responses (parse with `jq`)                                |
+| `--debug`        | Log HTTP request/response to stderr (Authorization header is redacted)         |
+
+```sh
+# GitHub Actions example
+- name: Deploy
+  env:
+    NTZH_PROJECT: acme
+  run: |
+    ntzh login \
+      --service-account=ci@acme.com \
+      --key-file=<(echo "$NTZH_KEY")
+    ntzh deployment deploy api \
+      --image=ghcr.io/acme/api:${{ github.sha }} \
+      --location=bkk-1
+```
+
+All commands exit non-zero on failure; errors are written to stderr.
 
 ## Development
 
-    make test       # go test ./...
-    make build      # builds ./ntzh
-    make lint       # golangci-lint run
+```sh
+make test       # go test ./...
+make build      # build ./ntzh
+make lint       # golangci-lint run
+```
+
+Project layout:
+
+```
+cmd/ntzh/          # main entrypoint
+internal/api/      # arpc HTTP client + typed wrappers
+internal/auth/     # credential store (bearer, service account)
+internal/cli/      # cobra command tree
+internal/config/   # config file + env resolution
+internal/output/   # table & JSON printers
+```
+
+## License
+
+[MIT](LICENSE)

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"nortezh-cli/internal/config"
+	"github.com/nortezh/cli/internal/config"
 )
 
 const credFileName = "credentials.json"

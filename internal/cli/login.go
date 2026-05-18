@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"nortezh-cli/internal/auth"
-	"nortezh-cli/internal/config"
+	"github.com/nortezh/cli/internal/auth"
+	"github.com/nortezh/cli/internal/config"
 )
 
 // openBrowser is the function used to launch the browser during login.

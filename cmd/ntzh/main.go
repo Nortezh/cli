@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"nortezh-cli/internal/cli"
+	"github.com/nortezh/cli/internal/cli"
 )
 
 func main() {

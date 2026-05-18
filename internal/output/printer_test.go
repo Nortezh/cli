@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"nortezh-cli/internal/api"
+	"github.com/nortezh/cli/internal/api"
 )
 
 func TestPrinter_JSON_List(t *testing.T) {

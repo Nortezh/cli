@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"nortezh-cli/internal/output"
+	"github.com/nortezh/cli/internal/output"
 )
 
 func newDeploymentCmd(g *Globals) *cobra.Command {

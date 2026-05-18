@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"nortezh-cli/internal/api"
+	"github.com/nortezh/cli/internal/api"
 )
 
 func TestRequireProject(t *testing.T) {

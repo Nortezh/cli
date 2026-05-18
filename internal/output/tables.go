@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"nortezh-cli/internal/api"
+	"github.com/nortezh/cli/internal/api"
 )
 
 func projectHeaders() []string { return []string{"NAME", "PROJECT_ID", "CREATED_AT"} }

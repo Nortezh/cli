@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"nortezh-cli/internal/api"
-	"nortezh-cli/internal/auth"
-	"nortezh-cli/internal/config"
+	"github.com/nortezh/cli/internal/api"
+	"github.com/nortezh/cli/internal/auth"
+	"github.com/nortezh/cli/internal/config"
 )
 
 // osLookup is a tiny shim so tests can swap env lookup if needed.
