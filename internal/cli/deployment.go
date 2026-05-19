@@ -25,12 +25,14 @@ A "deployment" is identified by its name (e.g. 'api', 'web') and has
 numbered revisions you can roll back to or inspect.`,
 		Example: `  ntzh deployment list --project=acme
   ntzh deployment get staging-bo --project=acme --location=bkk-1
+  ntzh deployment create api --project=acme --image=ghcr.io/acme/api:v1.0.0 --location=bkk-1
   ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1
   ntzh deployment rollback staging-bo --project=acme --to=17 --location=bkk-1
   ntzh deployment revisions staging-bo --project=acme --location=bkk-1`,
 	}
 	cmd.AddCommand(newDeploymentListCmd(g))
 	cmd.AddCommand(newDeploymentGetCmd(g))
+	cmd.AddCommand(newDeploymentCreateCmd(g))
 	cmd.AddCommand(newDeploymentDeployCmd(g))
 	cmd.AddCommand(newDeploymentRollbackCmd(g))
 	cmd.AddCommand(newDeploymentRevisionsCmd(g))
@@ -115,6 +117,98 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 		},
 	}
 	cmd.Flags().StringVar(&location, "location", "", "cluster/location ID (auto-detected from deployment list if omitted; honors NTZH_LOCATION)")
+	return cmd
+}
+
+func newDeploymentCreateCmd(g *Globals) *cobra.Command {
+	var (
+		image      string
+		location   string
+		dtype      string
+		env        []string
+		port       int
+		protocol   string
+		internal   bool
+		minReplica int
+		maxReplica int
+		schedule   string
+	)
+	cmd := &cobra.Command{
+		Use:   "create <name>",
+		Short: "Create a new deployment in the selected project",
+		Long: `Create a new deployment named <name> at revision 1 in --location.
+
+Required: --image, --location.
+--type selects the workload kind: WebService (default), Worker, CronJob,
+InternalTCPService. CronJob also requires --schedule (cron expression).
+
+Use 'ntzh deployment deploy' for subsequent revisions.`,
+		Example: `  ntzh deployment create api --project=acme --location=bkk-1 --image=ghcr.io/acme/api:v1.0.0
+  ntzh deployment create api --project=acme --location=bkk-1 --image=img:v1 --port=8080 --min-replica=1 --max-replica=3
+  ntzh deployment create worker --project=acme --location=bkk-1 --image=img:v1 --type=Worker
+  ntzh deployment create nightly --project=acme --location=bkk-1 --image=img:v1 --type=CronJob --schedule="0 2 * * *"
+  ntzh deployment create api --project=acme --location=bkk-1 --image=img:v1 --env DB_URL=postgres://... --env DEBUG=true`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if image == "" {
+				return fmt.Errorf("--image is required")
+			}
+			if location == "" {
+				return fmt.Errorf("--location is required")
+			}
+			envMap, err := parseSetEnv(env)
+			if err != nil {
+				return err
+			}
+			name, err := requireProject(g.Project)
+			if err != nil {
+				return err
+			}
+			c, err := buildClient(g)
+			if err != nil {
+				return err
+			}
+			pslug, err := resolveProjectSlug(cmd.Context(), c, name)
+			if err != nil {
+				return err
+			}
+			opts := api.CreateDeploymentOptions{Type: dtype, Env: envMap}
+			if cmd.Flags().Changed("port") {
+				opts.Port = &port
+			}
+			if cmd.Flags().Changed("protocol") {
+				opts.Protocol = &protocol
+			}
+			if cmd.Flags().Changed("internal") {
+				opts.Internal = &internal
+			}
+			if cmd.Flags().Changed("min-replica") {
+				opts.MinReplica = &minReplica
+			}
+			if cmd.Flags().Changed("max-replica") {
+				opts.MaxReplica = &maxReplica
+			}
+			if cmd.Flags().Changed("schedule") {
+				opts.Schedule = &schedule
+			}
+			id, err := c.CreateDeployment(cmd.Context(), pslug, location, args[0], image, opts)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "created deployment %s (id=%s)\n", args[0], id)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&image, "image", "", "container image reference, e.g. ghcr.io/acme/api:v1.0.0 (required)")
+	cmd.Flags().StringVar(&location, "location", "", "cluster/location ID, e.g. bkk-1 (required)")
+	cmd.Flags().StringVar(&dtype, "type", "", "deployment type: WebService (default), Worker, CronJob, InternalTCPService")
+	cmd.Flags().StringArrayVar(&env, "env", nil, "env var KEY=VALUE (repeatable)")
+	cmd.Flags().IntVar(&port, "port", 0, "container port the service listens on")
+	cmd.Flags().StringVar(&protocol, "protocol", "", "service protocol (http, http2, tcp, ...)")
+	cmd.Flags().BoolVar(&internal, "internal", false, "expose only inside the cluster (no public URL)")
+	cmd.Flags().IntVar(&minReplica, "min-replica", 0, "minimum replica count")
+	cmd.Flags().IntVar(&maxReplica, "max-replica", 0, "maximum replica count")
+	cmd.Flags().StringVar(&schedule, "schedule", "", "cron schedule (required for --type=CronJob)")
 	return cmd
 }
 
