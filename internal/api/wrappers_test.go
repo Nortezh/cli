@@ -107,6 +107,43 @@ func TestDeploy(t *testing.T) {
 	}
 }
 
+func TestCreateDeployment(t *testing.T) {
+	c, seen := captureClient(t, "deployment.create",
+		`{"ok":true,"result":{"id":"d-123"}}`)
+
+	port := 8080
+	min := 1
+	max := 3
+	id, err := c.CreateDeployment(context.Background(), "acme", "bkk-1", "api", "img:1", CreateDeploymentOptions{
+		Type:       "WebService",
+		Port:       &port,
+		MinReplica: &min,
+		MaxReplica: &max,
+		Env:        map[string]string{"FOO": "bar"},
+	})
+	if err != nil {
+		t.Fatalf("CreateDeployment: %v", err)
+	}
+	if id != "d-123" {
+		t.Fatalf("id: %s", id)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if sent["project"] != "acme" || sent["location"] != "bkk-1" || sent["name"] != "api" || sent["image"] != "img:1" {
+		t.Fatalf("body: %v", sent)
+	}
+	if sent["type"] != "WebService" {
+		t.Fatalf("type: %v", sent)
+	}
+	if sent["port"].(float64) != 8080 || sent["minReplica"].(float64) != 1 || sent["maxReplica"].(float64) != 3 {
+		t.Fatalf("nums: %v", sent)
+	}
+	env, _ := sent["env"].(map[string]any)
+	if env["FOO"] != "bar" {
+		t.Fatalf("env: %v", sent)
+	}
+}
+
 func TestRollback(t *testing.T) {
 	c, seen := captureClient(t, "deployment.rollback",
 		`{"ok":true,"result":{}}`)

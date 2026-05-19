@@ -21,6 +21,59 @@ func (c *Client) ListDeployments(ctx context.Context, project string) ([]Deploym
 	return out.Items, nil
 }
 
+// CreateDeploymentOptions carries the fields backend deployment.create accepts.
+// Required: image. Type defaults to WebService when empty.
+// Nil pointer fields are omitted and the backend applies its defaults.
+type CreateDeploymentOptions struct {
+	Type       string
+	Port       *int
+	Protocol   *string
+	Internal   *bool
+	MinReplica *int
+	MaxReplica *int
+	Env        map[string]string
+	Schedule   *string
+}
+
+// CreateDeployment creates a new deployment (revision 1) and returns its id.
+// Backend method: deployment.create.
+func (c *Client) CreateDeployment(ctx context.Context, project, location, name, image string, opts CreateDeploymentOptions) (string, error) {
+	body := struct {
+		Project    string            `json:"project"`
+		Location   string            `json:"location"`
+		Name       string            `json:"name"`
+		Image      string            `json:"image"`
+		Type       string            `json:"type"`
+		MinReplica *int              `json:"minReplica"`
+		MaxReplica *int              `json:"maxReplica"`
+		Port       *int              `json:"port"`
+		Protocol   *string           `json:"protocol"`
+		Internal   *bool             `json:"internal"`
+		Env        map[string]string `json:"env"`
+		Schedule   *string           `json:"schedule"`
+	}{
+		Project:    project,
+		Location:   location,
+		Name:       name,
+		Image:      image,
+		Type:       opts.Type,
+		MinReplica: opts.MinReplica,
+		MaxReplica: opts.MaxReplica,
+		Port:       opts.Port,
+		Protocol:   opts.Protocol,
+		Internal:   opts.Internal,
+		Env:        opts.Env,
+		Schedule:   opts.Schedule,
+	}
+	var out struct {
+		ID string `json:"id"`
+	}
+	if err := c.Invoke(ctx, "deployment.create", body, &out); err != nil {
+		return "", err
+	}
+	return out.ID, nil
+}
+
 func (c *Client) GetDeployment(ctx context.Context, project, location, name string) (*DeploymentDetail, error) {
 	body := struct {
 		Project  string `json:"project"`
