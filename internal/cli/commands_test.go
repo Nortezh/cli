@@ -200,6 +200,94 @@ func TestDeploymentRollback(t *testing.T) {
 	}
 }
 
+func TestDeploymentRollbackInteractive(t *testing.T) {
+	_ = setupAuthed(t)
+	t.Setenv("NTZH_LOCATION", "bkk-1")
+	srv := newFakeBackend(t, map[string]func([]byte) string{
+		"project.list": func([]byte) string {
+			return `{"ok":true,"result":{"items":[{"id":"p","name":"alpha"}]}}`
+		},
+		"deployment.logRevision": func([]byte) string {
+			return `{"ok":true,"result":{"items":[
+				{"revision":3,"image":"img:3","status":3,"deployedByEmail":"a@b","deployedAt":"2026-05-18T01:00:00Z"},
+				{"revision":1,"image":"img:1","status":3,"deployedByEmail":"a@b","deployedAt":"2026-05-18T00:00:00Z"}
+			]}}`
+		},
+		"deployment.rollback": func(body []byte) string {
+			var p struct {
+				Location string
+				Revision int
+			}
+			_ = json.Unmarshal(body, &p)
+			if p.Location != "bkk-1" || p.Revision != 3 {
+				return `{"ok":false,"error":{"code":"X","message":"bad body"}}`
+			}
+			return `{"ok":true,"result":{}}`
+		},
+	})
+
+	// 1. Stdin is not a terminal
+	t.Run("non-interactive error", func(t *testing.T) {
+		origIsTerminal := isTerminal
+		isTerminal = func() bool { return false }
+		defer func() { isTerminal = origIsTerminal }()
+
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"deployment", "rollback", "web",
+			"--server", srv.URL, "--project", "alpha"})
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		err := cmd.Execute()
+		if err == nil || !strings.Contains(err.Error(), "stdin is not a terminal") {
+			t.Fatalf("expected terminal error, got: %v", err)
+		}
+	})
+
+	// Mock isTerminal to return true for interactive tests
+	origIsTerminal := isTerminal
+	isTerminal = func() bool { return true }
+	defer func() { isTerminal = origIsTerminal }()
+
+	// 2. Interactive prompt - successful selection
+	t.Run("interactive success", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"deployment", "rollback", "web",
+			"--server", srv.URL, "--project", "alpha"})
+		var out bytes.Buffer
+		var errOut bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&errOut)
+		cmd.SetIn(strings.NewReader("1\n")) // Select first option (revision 3)
+
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("execute: %v", err)
+		}
+		if !strings.Contains(out.String(), "rolled back to revision 3") {
+			t.Fatalf("got output %q", out.String())
+		}
+		if !strings.Contains(errOut.String(), "Select a revision to roll back to:") {
+			t.Fatalf("missing prompt in stderr: %q", errOut.String())
+		}
+	})
+
+	// 3. Interactive prompt - invalid selection
+	t.Run("interactive invalid input", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"deployment", "rollback", "web",
+			"--server", srv.URL, "--project", "alpha"})
+		var out bytes.Buffer
+		var errOut bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&errOut)
+		cmd.SetIn(strings.NewReader("99\n")) // Out of range option
+
+		err := cmd.Execute()
+		if err == nil || !strings.Contains(err.Error(), `invalid choice "99"`) {
+			t.Fatalf("expected invalid choice error, got: %v", err)
+		}
+	})
+}
+
 func TestDeploymentRevisions(t *testing.T) {
 	_ = setupAuthed(t)
 	t.Setenv("NTZH_LOCATION", "bkk-1")
