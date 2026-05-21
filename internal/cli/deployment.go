@@ -288,6 +288,11 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 	return cmd
 }
 
+var isTerminal = func() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
+}
+
 // pickRevisionInteractive prints a numbered list of revisions to stderr and
 // reads the user's choice from stdin. Returns the chosen revision number.
 // Errors out when stdin is not a terminal so non-interactive callers must
@@ -296,7 +301,7 @@ func pickRevisionInteractive(cmd *cobra.Command, items []api.RevisionItem) (int,
 	if len(items) == 0 {
 		return 0, fmt.Errorf("no revisions available to roll back to")
 	}
-	if fi, err := os.Stdin.Stat(); err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
+	if !isTerminal() {
 		return 0, fmt.Errorf("--to <revision> is required (stdin is not a terminal)")
 	}
 	w := cmd.ErrOrStderr()
