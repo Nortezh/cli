@@ -41,26 +41,23 @@ Supported targets:
 
 func newSkillInstallCmd() *cobra.Command {
 	var (
-		dir     string
-		target  string
-		force   bool
+		dir    string
+		target string
 	)
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Install the bundled skill for Claude Code, Codex, or both",
-		Long: `Write the embedded SKILL.md into the per-tool skills directory.
+		Short: "Install (or update) the bundled skill for Claude Code, Codex, or both",
+		Long: `Write the embedded SKILL.md into the per-tool skills directory,
+overwriting any existing copy so it always matches this binary.
 
 --target accepts 'claude', 'codex', or 'all' (default). With --dir set,
-exactly one SKILL.md is written to that directory regardless of --target.
-
-Skips writing if SKILL.md already exists; pass --force to overwrite.`,
-		Example: `  ntzh skill install                       # install for both claude and codex
+exactly one SKILL.md is written to that directory regardless of --target.`,
+		Example: `  ntzh skill install                       # install/update both claude and codex
   ntzh skill install --target=claude
-  ntzh skill install --target=codex --force
   ntzh skill install --dir=/custom/path    # write to one explicit directory`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if dir != "" {
-				return writeSkill(cmd, dir, force)
+				return writeSkill(cmd, dir)
 			}
 			targets, err := resolveTargets(target)
 			if err != nil {
@@ -72,7 +69,7 @@ Skips writing if SKILL.md already exists; pass --force to overwrite.`,
 			}
 			for _, name := range targets {
 				dest := skillTargets[name](home)
-				if err := writeSkill(cmd, dest, force); err != nil {
+				if err := writeSkill(cmd, dest); err != nil {
 					return err
 				}
 			}
@@ -81,7 +78,6 @@ Skips writing if SKILL.md already exists; pass --force to overwrite.`,
 	}
 	cmd.Flags().StringVar(&dir, "dir", "", "explicit destination directory; bypasses --target")
 	cmd.Flags().StringVar(&target, "target", "all", "install target: claude, codex, or all")
-	cmd.Flags().BoolVar(&force, "force", false, "overwrite an existing SKILL.md")
 	return cmd
 }
 
@@ -101,20 +97,18 @@ func resolveTargets(target string) ([]string, error) {
 	return []string{target}, nil
 }
 
-func writeSkill(cmd *cobra.Command, dest string, force bool) error {
+func writeSkill(cmd *cobra.Command, dest string) error {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return fmt.Errorf("create skill dir: %w", err)
 	}
 	path := filepath.Join(dest, skill.FileName)
-	if !force {
-		if _, err := os.Stat(path); err == nil {
-			fmt.Fprintf(cmd.OutOrStdout(), "skill already installed at %s (use --force to overwrite)\n", path)
-			return nil
-		}
+	verb := "installed"
+	if _, err := os.Stat(path); err == nil {
+		verb = "updated"
 	}
 	if err := os.WriteFile(path, []byte(skill.Content), 0o644); err != nil {
 		return fmt.Errorf("write skill: %w", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "installed skill at %s\n", path)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s skill at %s\n", verb, path)
 	return nil
 }
