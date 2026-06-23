@@ -56,11 +56,14 @@ changelog:
 
 homebrew_casks:
   - name: ntzh
+    # Skip the cask when no tap token is configured so the first release can
+    # still publish archives before the Homebrew tap repo/secret exist.
+    skip_upload: '{{ if isEnvSet "HOMEBREW_TAP_TOKEN" }}false{{ else }}true{{ end }}'
     repository:
       owner: Nortezh
       name: homebrew-tap
       branch: main
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
     homepage: "https://github.com/Nortezh/cli"
     description: "Command-line client for the Nortezh platform"
     commit_author:
