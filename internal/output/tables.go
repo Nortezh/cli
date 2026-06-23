@@ -183,6 +183,28 @@ func domainDetailRows(d api.DomainDetail) [][]string {
 	return rows
 }
 
+func pullSecretHeaders() []string {
+	return []string{"NAME", "REGISTRY", "USERNAME", "CREATED_AT"}
+}
+
+func pullSecretRow(s api.PullSecret) []string {
+	return []string{
+		s.Name,
+		s.Registry,
+		s.Username,
+		s.CreatedAt.Format("2006-01-02 15:04"),
+	}
+}
+
+func pullSecretDetailRows(s api.PullSecretDetail) [][]string {
+	return [][]string{
+		{"NAME", s.Name},
+		{"REGISTRY", s.Registry},
+		{"USERNAME", s.Username},
+		{"CREATED_AT", s.CreatedAt.Format("2006-01-02 15:04")},
+	}
+}
+
 func boolLabel(b bool) string {
 	if b {
 		return "yes"

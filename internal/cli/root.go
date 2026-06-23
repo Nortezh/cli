@@ -63,6 +63,7 @@ Configuration precedence (highest first): flag > env > config file > default.
 	cmd.AddCommand(newDeploymentCmd(g))
 	cmd.AddCommand(newRouteCmd(g))
 	cmd.AddCommand(newDomainCmd(g))
+	cmd.AddCommand(newPullSecretCmd(g))
 	cmd.AddCommand(newSkillCmd())
 	return cmd
 }

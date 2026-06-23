@@ -57,6 +57,10 @@ func (p *tablePrinter) Print(v any) error {
 		return p.PrintList([]api.Domain{t})
 	case api.DomainDetail:
 		return p.printRows(deploymentDetailHeaders(), domainDetailRows(t))
+	case api.PullSecret:
+		return p.PrintList([]api.PullSecret{t})
+	case api.PullSecretDetail:
+		return p.printRows(deploymentDetailHeaders(), pullSecretDetailRows(t))
 	default:
 		return fmt.Errorf("table printer: unsupported type %T", v)
 	}
@@ -127,6 +131,12 @@ func tableRows(items any) ([]string, [][]string, error) {
 			rows = append(rows, domainRow(it))
 		}
 		return domainHeaders(), rows, nil
+	case []api.PullSecret:
+		rows := make([][]string, 0, len(v))
+		for _, it := range v {
+			rows = append(rows, pullSecretRow(it))
+		}
+		return pullSecretHeaders(), rows, nil
 	default:
 		return nil, nil, fmt.Errorf("table printer: unsupported type %T", items)
 	}

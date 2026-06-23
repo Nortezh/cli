@@ -33,6 +33,7 @@ type CreateDeploymentOptions struct {
 	MaxReplica *int
 	Env        map[string]string
 	Schedule   *string
+	PullSecret *string
 }
 
 // CreateDeployment creates a new deployment (revision 1) and returns its id.
@@ -51,6 +52,7 @@ func (c *Client) CreateDeployment(ctx context.Context, project, location, name, 
 		Internal   *bool             `json:"internal"`
 		Env        map[string]string `json:"env"`
 		Schedule   *string           `json:"schedule"`
+		PullSecret *string           `json:"pullSecret"`
 	}{
 		Project:    project,
 		Location:   location,
@@ -64,6 +66,7 @@ func (c *Client) CreateDeployment(ctx context.Context, project, location, name, 
 		Internal:   opts.Internal,
 		Env:        opts.Env,
 		Schedule:   opts.Schedule,
+		PullSecret: opts.PullSecret,
 	}
 	var out struct {
 		ID string `json:"id"`
@@ -97,6 +100,7 @@ type DeployOptions struct {
 	Internal   *bool
 	AddEnv     map[string]string
 	RemoveEnv  []string
+	PullSecret *string
 }
 
 // Deploy creates a new revision of an existing deployment with the given image.
@@ -115,6 +119,7 @@ func (c *Client) Deploy(ctx context.Context, project, location, name, image stri
 		Internal   *bool             `json:"internal"`
 		AddEnv     map[string]string `json:"addEnv"`
 		RemoveEnv  []string          `json:"removeEnv"`
+		PullSecret *string           `json:"pullSecret"`
 	}{
 		Project:    project,
 		Location:   location,
@@ -127,6 +132,7 @@ func (c *Client) Deploy(ctx context.Context, project, location, name, image stri
 		Internal:   opts.Internal,
 		AddEnv:     opts.AddEnv,
 		RemoveEnv:  opts.RemoveEnv,
+		PullSecret: opts.PullSecret,
 	}
 	return c.Invoke(ctx, "deployment.deploy", body, nil)
 }

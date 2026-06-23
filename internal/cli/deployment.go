@@ -132,6 +132,7 @@ func newDeploymentCreateCmd(g *Globals) *cobra.Command {
 		minReplica int
 		maxReplica int
 		schedule   string
+		pullSecret string
 	)
 	cmd := &cobra.Command{
 		Use:   "create <name>",
@@ -191,6 +192,9 @@ Use 'ntzh deployment deploy' for subsequent revisions.`,
 			if cmd.Flags().Changed("schedule") {
 				opts.Schedule = &schedule
 			}
+			if cmd.Flags().Changed("pull-secret") {
+				opts.PullSecret = &pullSecret
+			}
 			id, err := c.CreateDeployment(cmd.Context(), pslug, location, args[0], image, opts)
 			if err != nil {
 				return err
@@ -209,6 +213,7 @@ Use 'ntzh deployment deploy' for subsequent revisions.`,
 	cmd.Flags().IntVar(&minReplica, "min-replica", 0, "minimum replica count")
 	cmd.Flags().IntVar(&maxReplica, "max-replica", 0, "maximum replica count")
 	cmd.Flags().StringVar(&schedule, "schedule", "", "cron schedule (required for --type=CronJob)")
+	cmd.Flags().StringVar(&pullSecret, "pull-secret", "", "name of a pull secret to pull the image from a private registry")
 	return cmd
 }
 
@@ -223,6 +228,7 @@ func newDeploymentDeployCmd(g *Globals) *cobra.Command {
 		internal   bool
 		minReplica int
 		maxReplica int
+		pullSecret string
 	)
 	cmd := &cobra.Command{
 		Use:   "deploy <name>",
@@ -283,6 +289,9 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 			if cmd.Flags().Changed("max-replica") {
 				opts.MaxReplica = &maxReplica
 			}
+			if cmd.Flags().Changed("pull-secret") {
+				opts.PullSecret = &pullSecret
+			}
 			if err := c.Deploy(cmd.Context(), pslug, loc, args[0], image, opts); err != nil {
 				return err
 			}
@@ -299,6 +308,7 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 	cmd.Flags().BoolVar(&internal, "internal", false, "expose only inside the cluster (no public URL)")
 	cmd.Flags().IntVar(&minReplica, "min-replica", 0, "minimum replica count")
 	cmd.Flags().IntVar(&maxReplica, "max-replica", 0, "maximum replica count")
+	cmd.Flags().StringVar(&pullSecret, "pull-secret", "", "name of a pull secret to pull the image from a private registry")
 	return cmd
 }
 

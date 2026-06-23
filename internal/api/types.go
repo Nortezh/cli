@@ -161,6 +161,24 @@ type DomainDNSConfig struct {
 	CName []string `json:"cname"`
 }
 
+// PullSecret is one row in pullSecret.list. The password is never returned.
+type PullSecret struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Registry  string    `json:"registry"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// PullSecretDetail mirrors pullSecret.get. The password is never returned.
+type PullSecretDetail struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Registry  string    `json:"registry"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 // RevisionItem is one entry in deployment.logRevision (revision history).
 type RevisionItem struct {
 	Revision        int        `json:"revision"`
