@@ -38,7 +38,7 @@ func TestLoginCmd_Bearer_HappyPath(t *testing.T) {
 		return nil
 	}
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"login", "--server", "https://server.example"})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
@@ -62,7 +62,7 @@ func TestLoginCmd_ServiceAccount(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("NTZH_CONFIG_DIR", dir)
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"login",
 		"--service-account", "ci@example.com",
 		"--key", "secret-key",
@@ -89,7 +89,7 @@ func TestLogoutCmd_WipesCreds(t *testing.T) {
 	if err := auth.Save(&auth.BearerCreds{Token: "x"}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"logout"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -116,7 +116,7 @@ func TestWhoamiCmd_PrintsEmail(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"whoami", "--server", srv.URL})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
@@ -139,7 +139,7 @@ func TestWhoamiCmd_Unauthenticated(t *testing.T) {
 	// Need creds present so the request is made.
 	_ = auth.Save(&auth.BearerCreds{Token: "x"})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"whoami", "--server", srv.URL})
 	var errBuf bytes.Buffer
 	cmd.SetErr(&errBuf)

@@ -1,0 +1,82 @@
+# GoReleaser configuration for ntzh.
+# Docs: https://goreleaser.com
+version: 2
+
+project_name: ntzh
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ntzh
+    main: ./cmd/ntzh
+    binary: ntzh
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - id: ntzh
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+      - Merge pull request
+      - Merge branch
+
+homebrew_casks:
+  - name: ntzh
+    repository:
+      owner: Nortezh
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://github.com/Nortezh/cli"
+    description: "Command-line client for the Nortezh platform"
+    commit_author:
+      name: nortezh-bot
+      email: bot@nortezh.com
+    # Strip the gatekeeper quarantine flag from the unsigned binary on install.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ntzh"]
+          end
+
+release:
+  github:
+    owner: Nortezh
+    name: cli
+  draft: false
+  prerelease: auto

@@ -1,6 +1,10 @@
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
 
 // Globals holds parsed values of the global persistent flags.
 type Globals struct {
@@ -10,11 +14,12 @@ type Globals struct {
 	Debug   bool
 }
 
-func NewRootCmd() *cobra.Command {
+func NewRootCmd(version, commit, date string) *cobra.Command {
 	g := &Globals{}
 	cmd := &cobra.Command{
-		Use:   "ntzh",
-		Short: "Command-line client for the Nortezh platform",
+		Use:     "ntzh",
+		Version: version,
+		Short:   "Command-line client for the Nortezh platform",
 		Long: `ntzh is the command-line client for the Nortezh platform.
 
 Authentication:
@@ -51,6 +56,8 @@ Configuration precedence (highest first): flag > env > config file > default.
 			return cmd.Help()
 		},
 	}
+	cmd.SetVersionTemplate(fmt.Sprintf("ntzh {{.Version}} (commit %s, built %s)\n", commit, date))
+
 	cmd.PersistentFlags().StringVar(&g.Server, "server", "", "API server URL (overrides config file and NTZH_SERVER)")
 	cmd.PersistentFlags().StringVar(&g.Project, "project", "", "project name or slug (overrides NTZH_PROJECT); required for project-scoped commands")
 	cmd.PersistentFlags().StringVar(&g.Output, "output", "table", "output format: 'table' (human) or 'json' (machine-readable)")
@@ -67,4 +74,3 @@ Configuration precedence (highest first): flag > env > config file > default.
 	cmd.AddCommand(newSkillCmd())
 	return cmd
 }
-

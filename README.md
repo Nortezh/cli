@@ -24,7 +24,30 @@ your terminal or CI pipeline.
 
 ## Installation
 
-### From source (recommended)
+### Homebrew (macOS / Linux)
+
+```sh
+brew install Nortezh/tap/ntzh
+```
+
+### Install script (macOS / Linux)
+
+Downloads the right prebuilt binary for your OS/arch into `/usr/local/bin`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nortezh/cli/main/install.sh | sh
+```
+
+Override the version or target directory with `VERSION=v0.5.0` and
+`BINDIR=$HOME/.local/bin`.
+
+### Prebuilt binaries
+
+Download an archive for your platform from the
+[releases page](https://github.com/Nortezh/cli/releases), extract it, and put
+`ntzh` somewhere on your `PATH`.
+
+### From source
 
 ```sh
 go install github.com/nortezh/cli/cmd/ntzh@latest

@@ -47,7 +47,7 @@ func TestProjectList_Table(t *testing.T) {
 		},
 	})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"project", "list", "--server", srv.URL})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
@@ -63,7 +63,7 @@ func TestDeploymentList_RequiresProject(t *testing.T) {
 	_ = setupAuthed(t)
 	t.Setenv("NTZH_PROJECT", "")
 	srv := newFakeBackend(t, nil)
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"deployment", "list", "--server", srv.URL})
 	err := cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "project") {
@@ -87,7 +87,7 @@ func TestDeploymentList_Happy(t *testing.T) {
 		},
 	})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"deployment", "list", "--server", srv.URL, "--project", "alpha"})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
@@ -118,7 +118,7 @@ func TestDeploymentGet_JSON(t *testing.T) {
 		},
 	})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"deployment", "get", "web",
 		"--server", srv.URL, "--project", "alpha", "--output", "json"})
 	var out bytes.Buffer
@@ -154,7 +154,7 @@ func TestDeploymentDeploy(t *testing.T) {
 		},
 	})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"deployment", "deploy", "web",
 		"--server", srv.URL, "--project", "alpha", "--image", "img:2"})
 	var out bytes.Buffer
@@ -187,7 +187,7 @@ func TestDeploymentRollback(t *testing.T) {
 		},
 	})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"deployment", "rollback", "web",
 		"--server", srv.URL, "--project", "alpha", "--to", "3"})
 	var out bytes.Buffer
@@ -215,7 +215,7 @@ func TestDeploymentRevisions(t *testing.T) {
 		},
 	})
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	cmd.SetArgs([]string{"deployment", "revisions", "web",
 		"--server", srv.URL, "--project", "alpha"})
 	var out bytes.Buffer

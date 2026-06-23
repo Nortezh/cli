@@ -7,7 +7,7 @@ import (
 )
 
 func TestRootCmd_Help(t *testing.T) {
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("test", "none", "unknown")
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"--help"})
