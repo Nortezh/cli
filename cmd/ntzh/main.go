@@ -16,7 +16,8 @@ var (
 
 func main() {
 	if err := cli.NewRootCmd(version, commit, date).Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, cli.FormatCLIError(err))
+		// AXI §6: structured errors go to stdout so agents can read them.
+		fmt.Fprintln(os.Stdout, cli.FormatCLIError(err))
 		os.Exit(1)
 	}
 }

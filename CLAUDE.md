@@ -52,7 +52,7 @@ Env vars: `NTZH_SERVER`, `NTZH_PROJECT`, `NTZH_LOCATION`, `NTZH_CONFIG_DIR` (the
 - `deployment.get` returns `env` as `map[string]string`. `DeploymentDetail.Env` carries it; the table printer emits one `ENV:KEY  VALUE` row per key (sorted) after the main fields.
 
 ### Output (`internal/output/`)
-`Printer` interface with `table` (default) and `json` implementations, selected by `--output`. Table formatters live in `tables.go` per resource type.
+`Printer` interface with three implementations selected by `--output`: `toon` (**default**, compact/agent-friendly — `toon.go`), `table` (`printer.go`), and `json`. Per-resource headers/rows live in `tables.go`; the TOON and table printers share them via `tableRows`/the `*DetailRows` funcs. TOON lists append a `count:` line and render empty as `<resource>: 0 found`; `output.Hints(w, format, ...)` appends AXI `help[]` next-step lines (no-op for `json`). Errors print to **stdout** via `FormatCLIError` (structured `error:` / `help:` lines), not stderr.
 
 ### CLI wiring (`internal/cli/`)
 Global flags `--server`, `--project`, `--output`, `--debug` are defined on the root command. `context.go` builds an `api.Client` (+ `Creds` from the store) per invocation using the resolved config. `--debug` logs request/response to stderr with the `Authorization` header redacted.

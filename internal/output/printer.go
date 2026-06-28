@@ -16,12 +16,14 @@ type Printer interface {
 
 func NewPrinter(format string, w io.Writer) (Printer, error) {
 	switch format {
+	case "toon":
+		return &toonPrinter{w: w}, nil
 	case "table":
 		return &tablePrinter{w: w}, nil
 	case "json":
 		return &jsonPrinter{w: w}, nil
 	default:
-		return nil, fmt.Errorf("unknown output format: %s (want table|json)", format)
+		return nil, fmt.Errorf("unknown output format: %s (want toon|table|json)", format)
 	}
 }
 

@@ -70,7 +70,13 @@ Use '--output json' for the full structured response.`,
 			if err != nil {
 				return err
 			}
-			return p.PrintList(ds)
+			if err := p.PrintList(ds); err != nil {
+				return err
+			}
+			output.Hints(cmd.OutOrStdout(), g.Output,
+				"ntzh deployment get <name> --project="+pslug,
+				"ntzh deployment deploy <name> --project="+pslug+" --image=<img:tag>")
+			return nil
 		},
 	}
 }

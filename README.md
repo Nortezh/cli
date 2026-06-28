@@ -168,11 +168,11 @@ ntzh deployment deploy staging-bo \
   --location=bkk-1
 ```
 
-Deployment list columns (table mode): `NAME`, `TYPE`, `STATUS`, `LOCATION`,
-`REPLICAS`, `LAST_DEPLOYED`.
+Deployment list fields: `name`, `type`, `status`, `location`, `replicas`,
+`last_deployed` (lowercased in TOON; uppercased columns in table mode).
 
-`ntzh deployment get <name>` prints the current env (`ENV:KEY` rows in table
-mode, or the `env` object under `--output=json`). Use `--set-env` / `--remove-env`
+`ntzh deployment get <name>` prints the current env (`env.KEY` keys in TOON,
+`ENV:KEY` rows in table mode, or the `env` object under `--output=json`). Use `--set-env` / `--remove-env`
 on `deploy` to patch it — each flag is optional, omitted flags leave the value
 unchanged.
 
@@ -230,7 +230,9 @@ flag  >  env var  >  config file  >  default
 
 | Flag             | Purpose                                                                        |
 | ---------------- | ------------------------------------------------------------------------------ |
+| `--output=toon`  | Default: compact, agent-friendly output (lists end with a `count:` line)       |
 | `--output=json`  | Emit raw structured responses (parse with `jq`)                                |
+| `--output=table` | Aligned human-readable columns                                                 |
 | `--debug`        | Log HTTP request/response to stderr (Authorization header is redacted)         |
 
 ```sh
@@ -247,7 +249,8 @@ flag  >  env var  >  config file  >  default
       --location=bkk-1
 ```
 
-All commands exit non-zero on failure; errors are written to stderr.
+All commands exit non-zero on failure; output and structured errors (an `error:`
+line, plus a `help:` line with the fix when known) are written to stdout.
 
 ## Shell completion
 
@@ -305,7 +308,7 @@ internal/api/      # arpc HTTP client + typed wrappers
 internal/auth/     # credential store (bearer, service account)
 internal/cli/      # cobra command tree
 internal/config/   # config file + env resolution
-internal/output/   # table & JSON printers
+internal/output/   # TOON, table & JSON printers
 ```
 
 ## License

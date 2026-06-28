@@ -41,7 +41,12 @@ project's 'slug' which is the stable identifier accepted by --project.`,
 			if err != nil {
 				return err
 			}
-			return p.PrintList(ps)
+			if err := p.PrintList(ps); err != nil {
+				return err
+			}
+			output.Hints(cmd.OutOrStdout(), g.Output,
+				"ntzh deployment list --project=<name>")
+			return nil
 		},
 	}
 }
