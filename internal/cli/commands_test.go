@@ -241,6 +241,11 @@ func TestDeploymentRollbackInteractive(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "stdin is not a terminal") {
 			t.Fatalf("expected terminal error, got: %v", err)
 		}
+		// The error must be actionable: list valid revisions and a ready-to-run command.
+		if !strings.Contains(err.Error(), "available revisions: 3, 1") ||
+			!strings.Contains(err.Error(), "--to=3") {
+			t.Fatalf("expected actionable hint with revisions, got: %v", err)
+		}
 	})
 
 	// Mock isTerminal to return true for interactive tests

@@ -271,7 +271,7 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 				if err != nil {
 					return err
 				}
-				to, err = pickRevisionInteractive(cmd, revs)
+				to, err = pickRevisionInteractive(cmd, args[0], revs)
 				if err != nil {
 					return err
 				}
@@ -297,12 +297,17 @@ var isTerminal = func() bool {
 // reads the user's choice from stdin. Returns the chosen revision number.
 // Errors out when stdin is not a terminal so non-interactive callers must
 // pass --to explicitly.
-func pickRevisionInteractive(cmd *cobra.Command, items []api.RevisionItem) (int, error) {
+func pickRevisionInteractive(cmd *cobra.Command, name string, items []api.RevisionItem) (int, error) {
 	if len(items) == 0 {
 		return 0, fmt.Errorf("no revisions available to roll back to")
 	}
 	if !isTerminal() {
-		return 0, fmt.Errorf("--to <revision> is required (stdin is not a terminal)")
+		revs := make([]string, len(items))
+		for i, it := range items {
+			revs[i] = strconv.Itoa(it.Revision)
+		}
+		return 0, fmt.Errorf("--to <revision> is required (stdin is not a terminal); available revisions: %s; e.g. ntzh deployment rollback %s --to=%d",
+			strings.Join(revs, ", "), name, items[0].Revision)
 	}
 	w := cmd.ErrOrStderr()
 	fmt.Fprintln(w, "Select a revision to roll back to:")
