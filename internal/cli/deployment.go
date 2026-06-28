@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -338,17 +341,19 @@ func newDeploymentRollbackCmd(g *Globals) *cobra.Command {
 		Short: "Roll a deployment back to a previous revision number",
 		Long: `Re-promote a previous revision of <name> as the live revision.
 
-Use 'ntzh deployment revisions <name>' to discover revision numbers.
---to must be a positive integer.
+Pass --to <revision> to pick non-interactively. When omitted (and stdin
+is a terminal) the CLI fetches the revision history and prompts you to
+choose one.
+
+Use 'ntzh deployment revisions <name>' to inspect revision numbers up
+front.
 
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
 		Example: `  ntzh deployment rollback <deployment> --project=<project> --to=<revision> --location=<location>
-  ntzh deployment rollback staging-bo --project=acme --to=17 --location=bkk-1`,
-		Args:    cobra.ExactArgs(1),
+  ntzh deployment rollback staging-bo --project=acme --to=17 --location=bkk-1
+  ntzh deployment rollback staging-bo --project=acme  # interactive picker`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if to <= 0 {
-				return fmt.Errorf("--to <revision> is required")
-			}
 			name, err := requireProject(g.Project)
 			if err != nil {
 				return err
@@ -365,6 +370,16 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 			if err != nil {
 				return err
 			}
+			if to <= 0 {
+				revs, err := c.ListRevisions(cmd.Context(), pslug, loc, args[0])
+				if err != nil {
+					return err
+				}
+				to, err = pickRevisionInteractive(cmd, args[0], revs)
+				if err != nil {
+					return err
+				}
+			}
 			if err := c.Rollback(cmd.Context(), pslug, loc, args[0], to); err != nil {
 				return err
 			}
@@ -372,9 +387,49 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&to, "to", 0, "target revision number to roll back to (must be > 0, required)")
+	cmd.Flags().IntVar(&to, "to", 0, "target revision number (omit for an interactive picker)")
 	cmd.Flags().StringVar(&location, "location", "", "cluster/location ID (auto-detected if omitted; honors NTZH_LOCATION)")
 	return cmd
+}
+
+var isTerminal = func() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
+}
+
+// pickRevisionInteractive prints a numbered list of revisions to stderr and
+// reads the user's choice from stdin. Returns the chosen revision number.
+// Errors out when stdin is not a terminal so non-interactive callers must
+// pass --to explicitly.
+func pickRevisionInteractive(cmd *cobra.Command, name string, items []api.RevisionItem) (int, error) {
+	if len(items) == 0 {
+		return 0, fmt.Errorf("no revisions available to roll back to")
+	}
+	if !isTerminal() {
+		revs := make([]string, len(items))
+		for i, it := range items {
+			revs[i] = strconv.Itoa(it.Revision)
+		}
+		return 0, fmt.Errorf("--to <revision> is required (stdin is not a terminal); available revisions: %s; e.g. ntzh deployment rollback %s --to=%d",
+			strings.Join(revs, ", "), name, items[0].Revision)
+	}
+	w := cmd.ErrOrStderr()
+	fmt.Fprintln(w, "Select a revision to roll back to:")
+	for i, it := range items {
+		when := it.DeployedAt.Format("2006-01-02 15:04")
+		fmt.Fprintf(w, "  [%d] revision %d  %s  %s  by %s\n", i+1, it.Revision, when, it.Image, it.DeployedByEmail)
+	}
+	fmt.Fprintf(w, "Enter choice (1-%d): ", len(items))
+	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	if err != nil && line == "" {
+		return 0, fmt.Errorf("read choice: %w", err)
+	}
+	line = strings.TrimSpace(line)
+	idx, err := strconv.Atoi(line)
+	if err != nil || idx < 1 || idx > len(items) {
+		return 0, fmt.Errorf("invalid choice %q", line)
+	}
+	return items[idx-1].Revision, nil
 }
 
 func newDeploymentRevisionsCmd(g *Globals) *cobra.Command {
