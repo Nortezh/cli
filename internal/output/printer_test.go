@@ -62,6 +62,73 @@ func TestPrinter_Table_Deployment(t *testing.T) {
 	}
 }
 
+func TestPrinter_TOON_List(t *testing.T) {
+	var buf bytes.Buffer
+	p, err := NewPrinter("toon", &buf)
+	if err != nil {
+		t.Fatalf("NewPrinter: %v", err)
+	}
+	items := []api.Deployment{
+		{Name: "web", Type: "WebService", ActionStatus: "success", Location: "olufy-0", MinReplicas: 2, MaxReplicas: 5},
+		{Name: "api", Type: "Worker", ActionStatus: "pending", Location: "olufy-0", MinReplicas: 1, MaxReplicas: 1},
+	}
+	if err := p.PrintList(items); err != nil {
+		t.Fatalf("PrintList: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "deployments[2]{name,type,status,location,replicas,last_deployed}:") {
+		t.Fatalf("missing TOON header, got: %s", out)
+	}
+	if !strings.Contains(out, "  web,WebService,success,olufy-0,2-5,") {
+		t.Fatalf("missing row, got: %s", out)
+	}
+	if !strings.Contains(out, "count: 2") {
+		t.Fatalf("missing count, got: %s", out)
+	}
+}
+
+func TestPrinter_TOON_Empty(t *testing.T) {
+	var buf bytes.Buffer
+	p, _ := NewPrinter("toon", &buf)
+	if err := p.PrintList([]api.Project{}); err != nil {
+		t.Fatalf("PrintList: %v", err)
+	}
+	if got := strings.TrimSpace(buf.String()); got != "projects: 0 found" {
+		t.Fatalf("expected definitive empty state, got: %q", got)
+	}
+}
+
+func TestPrinter_TOON_Single(t *testing.T) {
+	var buf bytes.Buffer
+	p, _ := NewPrinter("toon", &buf)
+	if err := p.Print(api.Project{Name: "alpha", Slug: "alpha-0"}); err != nil {
+		t.Fatalf("Print: %v", err)
+	}
+	out := buf.String()
+	if !strings.HasPrefix(out, "project:\n") {
+		t.Fatalf("missing object header, got: %s", out)
+	}
+	if !strings.Contains(out, "  name: alpha") || !strings.Contains(out, "  project_id: alpha-0") {
+		t.Fatalf("missing key/value lines, got: %s", out)
+	}
+}
+
+func TestToonScalar_Quoting(t *testing.T) {
+	cases := map[string]string{
+		"plain":      "plain",
+		"img:v1":     "img:v1",  // colon is not a TOON delimiter
+		"a,b":        `"a,b"`,   // comma must be quoted
+		"":           `""`,      // empty is explicit
+		" lead":      `" lead"`, // surrounding space quoted
+		"say \"hi\"": `"say \"hi\""`,
+	}
+	for in, want := range cases {
+		if got := toonScalar(in); got != want {
+			t.Fatalf("toonScalar(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestNewPrinter_UnknownFormat(t *testing.T) {
 	if _, err := NewPrinter("xml", &bytes.Buffer{}); err == nil {
 		t.Fatal("expected error for unknown format")

@@ -13,8 +13,10 @@ Available on every command:
 
 - `--project <name|slug>` — project, required for all project-scoped commands (or `NTZH_PROJECT`).
 - `--server <url>` — API server (or `NTZH_SERVER`; else config file).
-- `--output table|json` — `table` (default, human) or `json` (machine-readable).
+- `--output toon|table|json` — `toon` (default, compact/agent-friendly), `table` (aligned columns), or `json` (raw structured). Lists end with a `count:` line; empty lists print `<resource>: 0 found`.
 - `--debug` — log HTTP request/response to stderr (Authorization redacted).
+
+Output & errors go to **stdout**. On failure the process exits non-zero and prints a structured `error:` line (plus a `help:` line with the fix when known) to stdout — read it instead of stderr.
 
 Env vars: `NTZH_SERVER`, `NTZH_PROJECT`, `NTZH_LOCATION` (skips location lookup), `NTZH_CONFIG_DIR`. Precedence: **flag > env > config file > default**.
 
@@ -84,7 +86,7 @@ ntzh deployment deploy api --project=<p> --image=img:v2 \
 
 `--image` is **required** on `deploy`. To change only env/scaling, still pass the current image (from `deployment get`). Returns when the revision is accepted — does **not** wait for rollout. Poll with `deployment get` or `deployment revisions`.
 
-`deployment get <name>` shows current env (table rows prefixed `ENV:`, or the `env` object under `--output json`).
+`deployment get <name>` shows current env (TOON keys prefixed `env.`, table rows prefixed `ENV:`, or the `env` object under `--output json`).
 
 ### `create` vs `deploy` — flag names differ ⚠️
 

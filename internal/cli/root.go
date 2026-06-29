@@ -2,8 +2,13 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/nortezh/cli/internal/auth"
+	"github.com/nortezh/cli/internal/output"
 )
 
 // Globals holds parsed values of the global persistent flags.
@@ -34,8 +39,9 @@ Project selection:
   state on disk — every invocation resolves the project by name.
 
 Scripting:
-  All commands support '--output json' for machine-readable output.
-  Errors are written to stderr; the process exits non-zero on failure.
+  Output defaults to TOON (compact, agent-friendly). Use '--output json'
+  for raw JSON or '--output table' for aligned columns. Errors print to
+  stdout in the same format; the process exits non-zero on failure.
 
 Configuration precedence (highest first): flag > env > config file > default.
   --server / NTZH_SERVER, --project / NTZH_PROJECT,
@@ -53,14 +59,14 @@ Configuration precedence (highest first): flag > env > config file > default.
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
+			return runHome(cmd, g)
 		},
 	}
 	cmd.SetVersionTemplate(fmt.Sprintf("ntzh {{.Version}} (commit %s, built %s)\n", commit, date))
 
 	cmd.PersistentFlags().StringVar(&g.Server, "server", "", "API server URL (overrides config file and NTZH_SERVER)")
 	cmd.PersistentFlags().StringVar(&g.Project, "project", "", "project name or slug (overrides NTZH_PROJECT); required for project-scoped commands")
-	cmd.PersistentFlags().StringVar(&g.Output, "output", "table", "output format: 'table' (human) or 'json' (machine-readable)")
+	cmd.PersistentFlags().StringVar(&g.Output, "output", "toon", "output format: 'toon' (default, compact), 'table' (human), or 'json' (machine-readable)")
 	cmd.PersistentFlags().BoolVar(&g.Debug, "debug", false, "log HTTP requests and responses to stderr (Authorization header redacted)")
 
 	cmd.AddCommand(newLoginCmd(g))
@@ -73,4 +79,44 @@ Configuration precedence (highest first): flag > env > config file > default.
 	cmd.AddCommand(newPullSecretCmd(g))
 	cmd.AddCommand(newSkillCmd())
 	return cmd
+}
+
+// runHome renders the content-first home view (AXI §8/§10): the tool's identity
+// followed by live state when the user is authenticated, or a login hint when
+// not. It never makes a network call for an unauthenticated user.
+func runHome(cmd *cobra.Command, g *Globals) error {
+	w := cmd.OutOrStdout()
+	fmt.Fprintf(w, "bin: %s\n", execPath())
+	fmt.Fprintf(w, "description: %s\n", cmd.Short)
+
+	if _, err := auth.Load(); err == nil {
+		if c, err := buildClient(g); err == nil {
+			if ps, err := c.ListProjects(cmd.Context()); err == nil {
+				if p, err := output.NewPrinter(g.Output, w); err == nil {
+					_ = p.PrintList(ps)
+				}
+				output.Hints(w, g.Output,
+					"ntzh deployment list --project=<name>",
+					"ntzh project list")
+				return nil
+			}
+		}
+	}
+	output.Hints(w, g.Output,
+		"ntzh login    # authenticate (browser or --service-account)",
+		"ntzh project list")
+	return nil
+}
+
+// execPath returns the absolute path of the running binary with the user's
+// home directory collapsed to ~, falling back to the bare command name.
+func execPath() string {
+	p, err := os.Executable()
+	if err != nil || p == "" {
+		return "ntzh"
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" && strings.HasPrefix(p, home) {
+		return "~" + p[len(home):]
+	}
+	return p
 }

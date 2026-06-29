@@ -22,14 +22,14 @@ func TestRequireProject(t *testing.T) {
 }
 
 func TestFormatCLIError(t *testing.T) {
-	if got := formatCLIError(api.ErrUnauthenticated); got != "Error: not logged in. Run 'ntzh login'." {
+	if got := formatCLIError(api.ErrUnauthenticated); got != "error: not logged in\nhelp: run 'ntzh login'" {
 		t.Fatalf("ErrUnauthenticated: got %q", got)
 	}
 	apiErr := &api.Error{Code: "BAD", Message: "x"}
-	if got := formatCLIError(apiErr); got != "Error: BAD: x" {
+	if got := formatCLIError(apiErr); got != "error: BAD: x" {
 		t.Fatalf("api err: got %q", got)
 	}
-	if got := formatCLIError(errors.New("boom")); got != "Error: boom" {
+	if got := formatCLIError(errors.New("boom")); got != "error: boom" {
 		t.Fatalf("plain: got %q", got)
 	}
 }
