@@ -29,7 +29,7 @@ func NewPrinter(format string, w io.Writer) (Printer, error) {
 
 type jsonPrinter struct{ w io.Writer }
 
-func (p *jsonPrinter) Print(v any) error        { return writeJSON(p.w, v) }
+func (p *jsonPrinter) Print(v any) error         { return writeJSON(p.w, v) }
 func (p *jsonPrinter) PrintList(items any) error { return writeJSON(p.w, items) }
 
 func writeJSON(w io.Writer, v any) error {

@@ -78,7 +78,9 @@ func TestDeploymentList_Happy(t *testing.T) {
 			return `{"ok":true,"result":{"items":[{"id":"proj-1","no":"alpha-slug","name":"alpha"}]}}`
 		},
 		"deployment.list": func(body []byte) string {
-			var p struct{ Project string `json:"project"` }
+			var p struct {
+				Project string `json:"project"`
+			}
 			_ = json.Unmarshal(body, &p)
 			if p.Project != "alpha-slug" {
 				return `{"ok":false,"error":{"code":"BAD","message":"expected alpha-slug"}}`

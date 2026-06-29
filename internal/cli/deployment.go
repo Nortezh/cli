@@ -350,7 +350,7 @@ Use 'ntzh deployment revisions <name>' to discover revision numbers.
 If --location is omitted the CLI resolves it from 'deployment.list'.`,
 		Example: `  ntzh deployment rollback <deployment> --project=<project> --to=<revision> --location=<location>
   ntzh deployment rollback staging-bo --project=acme --to=17 --location=bkk-1`,
-		Args:    cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if to <= 0 {
 				return fmt.Errorf("--to <revision> is required")

@@ -28,29 +28,29 @@ type Deployment struct {
 // DeploymentDetail mirrors the backend deployment.get response (GetResult).
 // Field names use the backend's camelCase tags exactly.
 type DeploymentDetail struct {
-	ID               string    `json:"id"`
-	Project          string    `json:"project"`
-	Location         string    `json:"location"`
-	Name             string    `json:"name"`
-	Image            string    `json:"image"`
-	MinReplica       int       `json:"minReplica"`
-	MaxReplica       int       `json:"maxReplica"`
-	Type             string    `json:"type"`
-	Port             int       `json:"port"`
-	Protocol         string    `json:"protocol"`
-	Internal         bool      `json:"internal"`
+	ID               string            `json:"id"`
+	Project          string            `json:"project"`
+	Location         string            `json:"location"`
+	Name             string            `json:"name"`
+	Image            string            `json:"image"`
+	MinReplica       int               `json:"minReplica"`
+	MaxReplica       int               `json:"maxReplica"`
+	Type             string            `json:"type"`
+	Port             int               `json:"port"`
+	Protocol         string            `json:"protocol"`
+	Internal         bool              `json:"internal"`
 	Env              map[string]string `json:"env"`
-	Revision         int       `json:"revision"`
-	LatestDeployedAt time.Time `json:"latestDeployedAt"`
-	CreatedAt        time.Time `json:"createdAt"`
-	Action           string    `json:"action"`
-	ActionStatus     string    `json:"actionStatus"`
-	Resources        *Resource `json:"resource"`
-	URL              string    `json:"url"`
-	InternalURL      string    `json:"internalUrl"`
-	LogURL           string    `json:"logUrl"`
-	StatusURL        string    `json:"statusUrl"`
-	DeployedByEmail  string    `json:"deployedByEmail"`
+	Revision         int               `json:"revision"`
+	LatestDeployedAt time.Time         `json:"latestDeployedAt"`
+	CreatedAt        time.Time         `json:"createdAt"`
+	Action           string            `json:"action"`
+	ActionStatus     string            `json:"actionStatus"`
+	Resources        *Resource         `json:"resource"`
+	URL              string            `json:"url"`
+	InternalURL      string            `json:"internalUrl"`
+	LogURL           string            `json:"logUrl"`
+	StatusURL        string            `json:"statusUrl"`
+	DeployedByEmail  string            `json:"deployedByEmail"`
 }
 
 // Memory returns the requested memory string ("Shared" when unset).
@@ -73,10 +73,10 @@ type Resource struct {
 
 // Route is one row in route.list.
 type Route struct {
-	ID         string         `json:"id"`
-	Domain     string         `json:"domain"`
-	Path       string         `json:"path"`
-	Status     int            `json:"status"`
+	ID         string          `json:"id"`
+	Domain     string          `json:"domain"`
+	Path       string          `json:"path"`
+	Status     int             `json:"status"`
 	Deployment RouteDeployment `json:"deployment"`
 	Location   RouteLocation   `json:"location"`
 	Config     RouteConfig     `json:"config"`
@@ -84,15 +84,15 @@ type Route struct {
 
 // RouteDetail mirrors route.get; adds CreatedAt/CreatedBy and richer location.
 type RouteDetail struct {
-	ID         string         `json:"id"`
-	Domain     string         `json:"domain"`
-	Path       string         `json:"path"`
+	ID         string          `json:"id"`
+	Domain     string          `json:"domain"`
+	Path       string          `json:"path"`
 	Location   RouteLocation   `json:"location"`
 	Deployment RouteDeployment `json:"deployment"`
 	Config     RouteConfig     `json:"config"`
-	Status     int            `json:"status"`
-	CreatedAt  time.Time      `json:"createdAt"`
-	CreatedBy  string         `json:"createdBy"`
+	Status     int             `json:"status"`
+	CreatedAt  time.Time       `json:"createdAt"`
+	CreatedBy  string          `json:"createdBy"`
 }
 
 type RouteDeployment struct {
@@ -130,15 +130,15 @@ type Domain struct {
 
 // DomainDetail mirrors domain.get.
 type DomainDetail struct {
-	Location     string              `json:"location"`
-	Domain       string              `json:"domain"`
-	Wildcard     bool                `json:"wildcard"`
-	CDN          bool                `json:"cdn"`
-	Status       string              `json:"status"`
-	Action       string              `json:"action"`
-	CreatedAt    time.Time           `json:"createdAt"`
-	Verification DomainVerification  `json:"verification"`
-	DNSConfig    DomainDNSConfig     `json:"dnsConfig"`
+	Location     string             `json:"location"`
+	Domain       string             `json:"domain"`
+	Wildcard     bool               `json:"wildcard"`
+	CDN          bool               `json:"cdn"`
+	Status       string             `json:"status"`
+	Action       string             `json:"action"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Verification DomainVerification `json:"verification"`
+	DNSConfig    DomainDNSConfig    `json:"dnsConfig"`
 }
 
 type DomainVerification struct {
