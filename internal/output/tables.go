@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/nortezh/cli/internal/api"
 )
@@ -55,6 +56,9 @@ func deploymentDetailRows(d api.DeploymentDetail) [][]string {
 		{"URL", d.URL},
 		{"LAST_DEPLOYED", last},
 		{"DEPLOYED_BY", d.DeployedByEmail},
+	}
+	if len(d.EnvGroups) > 0 {
+		rows = append(rows, []string{"ENV_GROUPS", strings.Join(d.EnvGroups, ", ")})
 	}
 	if len(d.Env) > 0 {
 		keys := make([]string, 0, len(d.Env))
