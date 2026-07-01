@@ -32,6 +32,7 @@ type CreateDeploymentOptions struct {
 	MinReplica *int
 	MaxReplica *int
 	Env        map[string]string
+	EnvGroups  []string
 	Schedule   *string
 	PullSecret *string
 }
@@ -51,6 +52,7 @@ func (c *Client) CreateDeployment(ctx context.Context, project, location, name, 
 		Protocol   *string           `json:"protocol"`
 		Internal   *bool             `json:"internal"`
 		Env        map[string]string `json:"env"`
+		EnvGroups  []string          `json:"envGroups"`
 		Schedule   *string           `json:"schedule"`
 		PullSecret *string           `json:"pullSecret"`
 	}{
@@ -65,6 +67,7 @@ func (c *Client) CreateDeployment(ctx context.Context, project, location, name, 
 		Protocol:   opts.Protocol,
 		Internal:   opts.Internal,
 		Env:        opts.Env,
+		EnvGroups:  opts.EnvGroups,
 		Schedule:   opts.Schedule,
 		PullSecret: opts.PullSecret,
 	}
@@ -92,6 +95,10 @@ func (c *Client) GetDeployment(ctx context.Context, project, location, name stri
 
 // DeployOptions carries the optional fields the backend accepts as a partial
 // update on deployment.deploy. nil pointers mean "no change".
+//
+// EnvGroups follows the backend's replace semantics: nil leaves the linked
+// groups unchanged, a non-nil slice replaces them (an empty non-nil slice
+// clears all links).
 type DeployOptions struct {
 	MinReplica *int
 	MaxReplica *int
@@ -100,6 +107,7 @@ type DeployOptions struct {
 	Internal   *bool
 	AddEnv     map[string]string
 	RemoveEnv  []string
+	EnvGroups  []string
 	PullSecret *string
 }
 
@@ -119,6 +127,7 @@ func (c *Client) Deploy(ctx context.Context, project, location, name, image stri
 		Internal   *bool             `json:"internal"`
 		AddEnv     map[string]string `json:"addEnv"`
 		RemoveEnv  []string          `json:"removeEnv"`
+		EnvGroups  []string          `json:"envGroups"`
 		PullSecret *string           `json:"pullSecret"`
 	}{
 		Project:    project,
@@ -132,6 +141,7 @@ func (c *Client) Deploy(ctx context.Context, project, location, name, image stri
 		Internal:   opts.Internal,
 		AddEnv:     opts.AddEnv,
 		RemoveEnv:  opts.RemoveEnv,
+		EnvGroups:  opts.EnvGroups,
 		PullSecret: opts.PullSecret,
 	}
 	return c.Invoke(ctx, "deployment.deploy", body, nil)
