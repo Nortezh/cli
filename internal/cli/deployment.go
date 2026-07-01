@@ -132,6 +132,7 @@ func newDeploymentCreateCmd(g *Globals) *cobra.Command {
 		location   string
 		dtype      string
 		env        []string
+		envGroup   []string
 		port       int
 		protocol   string
 		internal   bool
@@ -154,7 +155,8 @@ Use 'ntzh deployment deploy' for subsequent revisions.`,
   ntzh deployment create api --project=acme --location=bkk-1 --image=img:v1 --port=8080 --min-replica=1 --max-replica=3
   ntzh deployment create worker --project=acme --location=bkk-1 --image=img:v1 --type=Worker
   ntzh deployment create nightly --project=acme --location=bkk-1 --image=img:v1 --type=CronJob --schedule="0 2 * * *"
-  ntzh deployment create api --project=acme --location=bkk-1 --image=img:v1 --env DB_URL=postgres://... --env DEBUG=true`,
+  ntzh deployment create api --project=acme --location=bkk-1 --image=img:v1 --env DB_URL=postgres://... --env DEBUG=true
+  ntzh deployment create api --project=acme --location=bkk-1 --image=img:v1 --env-group shared --env-group prod`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if image == "" {
@@ -180,6 +182,9 @@ Use 'ntzh deployment deploy' for subsequent revisions.`,
 				return err
 			}
 			opts := api.CreateDeploymentOptions{Type: dtype, Env: envMap}
+			if groups := cleanStrings(envGroup); len(groups) > 0 {
+				opts.EnvGroups = groups
+			}
 			if cmd.Flags().Changed("port") {
 				opts.Port = &port
 			}
@@ -213,6 +218,7 @@ Use 'ntzh deployment deploy' for subsequent revisions.`,
 	cmd.Flags().StringVar(&location, "location", "", "cluster/location ID, e.g. bkk-1 (required)")
 	cmd.Flags().StringVar(&dtype, "type", "", "deployment type: WebService (default), Worker, CronJob, InternalTCPService")
 	cmd.Flags().StringArrayVar(&env, "env", nil, "env var KEY=VALUE (repeatable)")
+	cmd.Flags().StringArrayVar(&envGroup, "env-group", nil, "link project env group by NAME (repeatable)")
 	cmd.Flags().IntVar(&port, "port", 0, "container port the service listens on")
 	cmd.Flags().StringVar(&protocol, "protocol", "", "service protocol (http, http2, tcp, ...)")
 	cmd.Flags().BoolVar(&internal, "internal", false, "expose only inside the cluster (no public URL)")
@@ -225,16 +231,18 @@ Use 'ntzh deployment deploy' for subsequent revisions.`,
 
 func newDeploymentDeployCmd(g *Globals) *cobra.Command {
 	var (
-		image      string
-		location   string
-		setEnv     []string
-		removeEnv  []string
-		port       int
-		protocol   string
-		internal   bool
-		minReplica int
-		maxReplica int
-		pullSecret string
+		image          string
+		location       string
+		setEnv         []string
+		removeEnv      []string
+		envGroup       []string
+		clearEnvGroups bool
+		port           int
+		protocol       string
+		internal       bool
+		minReplica     int
+		maxReplica     int
+		pullSecret     string
 	)
 	cmd := &cobra.Command{
 		Use:   "deploy <name>",
@@ -243,9 +251,12 @@ func newDeploymentDeployCmd(g *Globals) *cobra.Command {
 container image referenced by --image. The backend pulls the image and
 rolls forward; on success the call returns with no body (exit 0).
 
-Optional --set-env / --remove-env / --port / --protocol / --internal /
---min-replica / --max-replica flags patch the deployment in the same
-revision; omitted flags leave the existing value unchanged.
+Optional --set-env / --remove-env / --env-group / --port / --protocol /
+--internal / --min-replica / --max-replica flags patch the deployment in
+the same revision; omitted flags leave the existing value unchanged.
+
+--env-group replaces the linked project env groups (repeatable);
+--clear-env-groups unlinks all of them. Omit both to keep the current set.
 
 Use 'ntzh deployment rollback' to revert if needed.
 
@@ -253,11 +264,16 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 		Example: `  ntzh deployment deploy <deployment> --project=<project> --image=<image> --location=<location>
   ntzh deployment deploy staging-bo --project=acme --image=ghcr.io/acme/api:v1.2.3 --location=bkk-1
   ntzh deployment deploy api --project=acme --image=img:v2 --set-env DB_URL=postgres://... --set-env DEBUG=true
+  ntzh deployment deploy api --project=acme --image=img:v2 --env-group shared --env-group prod
+  ntzh deployment deploy api --project=acme --image=img:v2 --clear-env-groups
   ntzh deployment deploy api --project=acme --image=img:v2 --remove-env STALE_FLAG --port 8080`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if image == "" {
 				return fmt.Errorf("--image is required")
+			}
+			if clearEnvGroups && cmd.Flags().Changed("env-group") {
+				return fmt.Errorf("--clear-env-groups cannot be combined with --env-group")
 			}
 			addEnv, err := parseSetEnv(setEnv)
 			if err != nil {
@@ -280,6 +296,12 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 				return err
 			}
 			opts := api.DeployOptions{AddEnv: addEnv, RemoveEnv: removeEnv}
+			switch {
+			case clearEnvGroups:
+				opts.EnvGroups = []string{}
+			case cmd.Flags().Changed("env-group"):
+				opts.EnvGroups = cleanStrings(envGroup)
+			}
 			if cmd.Flags().Changed("port") {
 				opts.Port = &port
 			}
@@ -309,6 +331,8 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 	cmd.Flags().StringVar(&location, "location", "", "cluster/location ID (auto-detected if omitted; honors NTZH_LOCATION)")
 	cmd.Flags().StringArrayVar(&setEnv, "set-env", nil, "merge env var KEY=VALUE (repeatable)")
 	cmd.Flags().StringArrayVar(&removeEnv, "remove-env", nil, "remove env var by KEY (repeatable)")
+	cmd.Flags().StringArrayVar(&envGroup, "env-group", nil, "replace linked env groups with these NAMEs (repeatable); omit to leave unchanged")
+	cmd.Flags().BoolVar(&clearEnvGroups, "clear-env-groups", false, "unlink all env groups from the deployment")
 	cmd.Flags().IntVar(&port, "port", 0, "container port the service listens on")
 	cmd.Flags().StringVar(&protocol, "protocol", "", "service protocol (http, http2, tcp, ...)")
 	cmd.Flags().BoolVar(&internal, "internal", false, "expose only inside the cluster (no public URL)")
@@ -316,6 +340,18 @@ If --location is omitted the CLI resolves it from 'deployment.list'.`,
 	cmd.Flags().IntVar(&maxReplica, "max-replica", 0, "maximum replica count")
 	cmd.Flags().StringVar(&pullSecret, "pull-secret", "", "name of a pull secret to pull the image from a private registry")
 	return cmd
+}
+
+// cleanStrings trims and drops empty entries from a repeatable string flag,
+// always returning a non-nil slice (empty when every entry was blank).
+func cleanStrings(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // parseSetEnv parses KEY=VALUE pairs from repeated --set-env flags.

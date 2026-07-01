@@ -40,6 +40,7 @@ type DeploymentDetail struct {
 	Protocol         string            `json:"protocol"`
 	Internal         bool              `json:"internal"`
 	Env              map[string]string `json:"env"`
+	EnvGroups        []string          `json:"envGroups"`
 	Revision         int               `json:"revision"`
 	LatestDeployedAt time.Time         `json:"latestDeployedAt"`
 	CreatedAt        time.Time         `json:"createdAt"`

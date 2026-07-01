@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -166,6 +167,47 @@ func TestDeploymentDeploy(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "deploying img:2") {
 		t.Fatalf("got %q", out.String())
+	}
+}
+
+func TestDeploymentDeploy_EnvGroups(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want any // expected JSON value of envGroups in the request body
+	}{
+		{"replace", []string{"--env-group", "shared", "--env-group", "prod"}, []any{"shared", "prod"}},
+		{"clear", []string{"--clear-env-groups"}, []any{}},
+		{"omit", nil, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_ = setupAuthed(t)
+			t.Setenv("NTZH_LOCATION", "bkk-1")
+			var seen map[string]any
+			srv := newFakeBackend(t, map[string]func([]byte) string{
+				"project.list": func([]byte) string {
+					return `{"ok":true,"result":{"items":[{"id":"p","no":"p-slug","name":"alpha"}]}}`
+				},
+				"deployment.deploy": func(body []byte) string {
+					_ = json.Unmarshal(body, &seen)
+					return `{"ok":true,"result":null}`
+				},
+			})
+
+			cmd := NewRootCmd("test", "none", "unknown")
+			args := append([]string{"deployment", "deploy", "web",
+				"--server", srv.URL, "--project", "alpha", "--image", "img:2"}, tc.args...)
+			cmd.SetArgs(args)
+			cmd.SetOut(&bytes.Buffer{})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("execute: %v", err)
+			}
+			got := seen["envGroups"]
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("envGroups = %#v, want %#v", got, tc.want)
+			}
+		})
 	}
 }
 

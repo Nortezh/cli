@@ -85,6 +85,7 @@ func TestDeploy(t *testing.T) {
 	if err := c.Deploy(context.Background(), "proj", "bkk-1", "web", "img:1", DeployOptions{
 		AddEnv:    map[string]string{"FOO": "bar"},
 		RemoveEnv: []string{"OLD"},
+		EnvGroups: []string{"shared", "prod"},
 		Port:      &port,
 	}); err != nil {
 		t.Fatalf("Deploy: %v", err)
@@ -102,8 +103,28 @@ func TestDeploy(t *testing.T) {
 	if len(rm) != 1 || rm[0] != "OLD" {
 		t.Fatalf("removeEnv: %v", sent)
 	}
+	eg, _ := sent["envGroups"].([]any)
+	if len(eg) != 2 || eg[0] != "shared" || eg[1] != "prod" {
+		t.Fatalf("envGroups: %v", sent)
+	}
 	if sent["port"].(float64) != 8080 {
 		t.Fatalf("port: %v", sent)
+	}
+}
+
+// TestDeployPreservesEnvGroups verifies that a nil EnvGroups marshals to JSON
+// null so the backend leaves the linked groups unchanged.
+func TestDeployPreservesEnvGroups(t *testing.T) {
+	c, seen := captureClient(t, "deployment.deploy",
+		`{"ok":true,"result":null}`)
+
+	if err := c.Deploy(context.Background(), "proj", "bkk-1", "web", "img:1", DeployOptions{}); err != nil {
+		t.Fatalf("Deploy: %v", err)
+	}
+	var sent map[string]any
+	_ = json.Unmarshal([]byte(*seen), &sent)
+	if v, ok := sent["envGroups"]; !ok || v != nil {
+		t.Fatalf("envGroups should be null when unset, got %#v", sent["envGroups"])
 	}
 }
 
@@ -120,6 +141,7 @@ func TestCreateDeployment(t *testing.T) {
 		MinReplica: &min,
 		MaxReplica: &max,
 		Env:        map[string]string{"FOO": "bar"},
+		EnvGroups:  []string{"shared"},
 	})
 	if err != nil {
 		t.Fatalf("CreateDeployment: %v", err)
@@ -141,6 +163,10 @@ func TestCreateDeployment(t *testing.T) {
 	env, _ := sent["env"].(map[string]any)
 	if env["FOO"] != "bar" {
 		t.Fatalf("env: %v", sent)
+	}
+	eg, _ := sent["envGroups"].([]any)
+	if len(eg) != 1 || eg[0] != "shared" {
+		t.Fatalf("envGroups: %v", sent)
 	}
 }
 
