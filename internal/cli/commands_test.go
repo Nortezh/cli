@@ -177,7 +177,7 @@ func TestDeploymentDeploy_EnvGroups(t *testing.T) {
 		want any // expected JSON value of envGroups in the request body
 	}{
 		{"replace", []string{"--env-group", "shared", "--env-group", "prod"}, []any{"shared", "prod"}},
-		{"clear", []string{"--env-group", ""}, []any{}},
+		{"clear", []string{"--clear-env-groups"}, []any{}},
 		{"omit", nil, nil},
 	}
 	for _, tc := range cases {
