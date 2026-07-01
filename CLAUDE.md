@@ -60,6 +60,9 @@ Global flags `--server`, `--project`, `--output`, `--debug` are defined on the r
 
 Deployment subcommands: `list`, `get`, `deploy`, `rollback`, `revisions` (aliased as `logs`). `revisions` calls `deployment.logRevision` and returns **revision history**, not pod log lines.
 
+### Self-update (`internal/selfupdate/`)
+`ntzh upgrade` (alias `update`, flag `--check`) is stdlib-only and talks to the public GitHub API — **not** the arpc backend, so it takes no `Client`/`Creds`. `LatestRelease` GETs `releases/latest`; `Newer` compares `major.minor.patch` (leading `v` and `-prerelease` stripped; unparseable current like `dev` counts as older); `Apply` downloads the archive named per `.goreleaser.yaml` (`archiveName` mirrors the `name_template`: title-cased OS, `x86_64` for amd64, `.zip` on Windows), extracts the `ntzh` binary, and atomically `os.Rename`s it over the running executable (Windows moves the old aside first). The command is wired with the injected `version` in `root.go`.
+
 ## Conventions specific to this repo
 
 - Go 1.26. Cobra is the only direct dependency.

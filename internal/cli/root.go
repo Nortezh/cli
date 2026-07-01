@@ -78,6 +78,7 @@ Configuration precedence (highest first): flag > env > config file > default.
 	cmd.AddCommand(newDomainCmd(g))
 	cmd.AddCommand(newPullSecretCmd(g))
 	cmd.AddCommand(newSkillCmd())
+	cmd.AddCommand(newUpgradeCmd(version))
 	return cmd
 }
 

@@ -88,6 +88,20 @@ make build          # produces ./ntzh
 
 Requires Go 1.26 or newer.
 
+### Updating
+
+`ntzh` can update itself in place:
+
+```sh
+ntzh upgrade            # check GitHub and install the latest release
+ntzh upgrade --check    # only report whether a newer version exists
+ntzh update             # alias for 'ntzh upgrade'
+```
+
+Replacing the binary requires write access to its directory. If `ntzh` lives in
+a system path (e.g. `/usr/local/bin`), re-run with `sudo` or use the install
+script above. Homebrew installs should be updated with `brew upgrade` instead.
+
 ## Quick start
 
 ```sh
